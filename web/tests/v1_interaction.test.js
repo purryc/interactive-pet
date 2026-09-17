@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {PerspectiveCamera,Scene,Vector3} from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {CatWandController,FeatherController} from '../src/v1/wand.js';
 import {CatBrain,CatPerceptionSystem} from '../src/v1/cat_brain.js';
 import {HoverHeightMapper,SpatialInputSystem} from '../src/v1/spatial_input.js';
@@ -23,8 +25,13 @@ test('pointer pipeline retains raw and filtered samples separately, with honest 
  assert.notEqual(spatial.rawPointer.position,spatial.filteredPointer.position);
  assert.equal(spatial.rawPointer.contact,false);spatial.deactivate();assert.equal(spatial.filteredPointer.active,false);
 });
-test('wand tip differs from pointer and feather keeps moving after wand stops, above ground',()=>{
- const wand=new CatWandController(new Scene()),dt=1/60;
+test('delivered Blender wand has separate rod and woven feather lure; feather keeps moving after stop',async()=>{
+ globalThis.ProgressEvent??=class{constructor(type,data){this.type=type;Object.assign(this,data);}};
+ const bytes=fs.readFileSync(new URL('../public/assets/cat_wand_v2.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const wand=new CatWandController(new Scene(),gltf),dt=1/60;
+ assert.ok(wand.rod.getObjectByName('Rod'));assert.ok(wand.lure.getObjectByName('Lure'));
+ let meshes=0;wand.lure.traverse(o=>{if(o.isMesh)meshes++;});assert.ok(meshes>=5);
  for(let i=0;i<15;i++)wand.update(dt,pointer(-.45+i*.04));
  const moving=wand.update(dt,pointer(.11));const tip=moving.tipPosition.clone();
  assert.ok(tip.distanceTo(pointer(.11).position)>.15);

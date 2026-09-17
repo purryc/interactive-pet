@@ -48,7 +48,7 @@ function setMode(next){
  if(next!=='wand'&&next!=='treat'){cat.setTarget({active:false});brain.enter('IDLE','手动观察模式');}
  if(next==='wand'||next==='treat'){cat.movement.stop();cat.animation.play('idle');brain.enter('IDLE','等待'+(next==='wand'?'羽毛':'零食'));}
  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===next));
- $('mode-hint').textContent={wand:'用 Apple Pencil 悬停或鼠标移动控制逗猫棒。Miso 会追羽毛，不会直接追指针。',treat:'用两根手指在零食附近捏合，然后拖动；松开后，Miso 会靠近闻一闻。',orbit:'拖动旋转视角，看看 Miso 的四足模型。',look:'移动指针，小猫会转头看目标。',move:'点击地面让小猫走过去，按住 Shift 点击可小跑。'}[next];
+ $('mode-hint').textContent={wand:'用 Apple Pencil 悬停或鼠标移动控制逗猫棒。Heihei 会追羽毛，不会直接追指针。',treat:'用两根手指在零食附近捏合，然后拖动；松开后，Heihei 会靠近闻一闻。',orbit:'拖动旋转视角，看看 Heihei 的四足模型。',look:'移动指针，小猫会转头看目标。',move:'点击地面让小猫走过去，按住 Shift 点击可小跑。'}[next];
 }
 function stopDemo(){demoTime=null;lastDemoEvent=-1;if(cat)cat.look.bodyFollow=$('body-follow').checked;$('stop-demo').classList.add('hidden');$('demo').textContent='▶ 播放 15 秒互动演示';}
 function play(key){stopDemo();if(mode==='wand'||mode==='treat')setMode('orbit');cat.play(key);}
@@ -60,10 +60,12 @@ async function load(){
  const configUrl=new URL(new URLSearchParams(location.search).get('config')??'assets/cat_asset_config_v10.json',assetBase);
  const response=await fetch(configUrl);if(!response.ok)throw new Error('模型配置加载失败');config=await response.json();
  config.modelUrl=new URL(config.modelUrl,configUrl).href;
- const gltf=await new GLTFLoader().loadAsync(config.modelUrl);cat=new CatController(gltf,config);scene.add(cat.root);
+ const loader=new GLTFLoader();
+ const [gltf,wandGltf]=await Promise.all([loader.loadAsync(config.modelUrl),loader.loadAsync(new URL('assets/cat_wand_v2.glb',assetBase).href)]);
+ cat=new CatController(gltf,config);scene.add(cat.root);
  skeleton=new THREE.SkeletonHelper(cat.model);skeleton.visible=false;skeleton.material.depthTest=false;skeleton.renderOrder=10;scene.add(skeleton);
  input=new InputAdapter(canvas,camera,target=>cat.setTarget(target),(p,run)=>{stopDemo();cat.moveTo(p,run);});
- spatial=new SpatialInputSystem(canvas,camera);wand=new CatWandController(scene);brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
+ spatial=new SpatialInputSystem(canvas,camera);wand=new CatWandController(scene,wandGltf);brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
  gestureAdapter.onGesture=g=>{if(mode==='treat')treat.handle(g);};
  spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`已收到 Apple Pencil ${raw.contact?'接触':'悬停'}事件；位置与倾角来自设备，高度：${raw.heightSource}。`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；高度由滑块模拟。';};
  $('hover-height').addEventListener('input',()=>{const value=Number($('hover-height').value);spatial.setSimulatedHeight(value);$('hover-height-value').value=value.toFixed(2)+' m';});
@@ -91,8 +93,8 @@ async function load(){
  for(const key of Object.keys(config.animationMap)){
   const button=document.createElement('button');button.dataset.action=key;button.innerHTML=`<b aria-hidden="true">${icons[key]}</b>${labels[key]}`;button.addEventListener('click',()=>play(key));$('actions').append(button);
  }
- document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{stopDemo();setMode(b.dataset.mode);}));
- document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
+ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{stopDemo();setMode(b.dataset.mode);$('settings-dialog').close();}));
+ document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view(b.dataset.view);$('settings-dialog').close();}));
  $('height').addEventListener('input',()=>{input.setHeight(Number($('height').value));$('height-value').value=input.height.toFixed(2)+' m';});
  const targetChange=()=>input.setPosition(new THREE.Vector3(debugParams.targetX,input.height,debugParams.targetZ));
  range('目标 X',-1.7,1.7,.01,()=>debugParams.targetX,v=>{debugParams.targetX=v;targetChange();},' m');
@@ -115,9 +117,9 @@ async function load(){
  $('show-skeleton').addEventListener('change',()=>skeleton.visible=$('show-skeleton').checked);
  $('show-ground').addEventListener('change',()=>{ground.visible=grid.visible=$('show-ground').checked;});
  $('orbit-enabled').addEventListener('change',()=>orbit.enabled=mode==='orbit'&&$('orbit-enabled').checked);
- $('home-view').addEventListener('click',()=>{stopDemo();cat.reset();input.setActive(false);spatial.deactivate();treat.reset();brain=new CatBrain(cat);view('hero');setMode('wand');});
+ $('home-view').addEventListener('click',()=>{stopDemo();cat.reset();input.setActive(false);spatial.deactivate();treat.reset();brain=new CatBrain(cat);view('hero');setMode('wand');$('settings-dialog').close();});
  const startDemo=()=>{cat.reset();cat.look.bodyFollow=false;input.setActive(false);setMode('orbit');demoTime=0;lastDemoEvent=-1;$('stop-demo').classList.remove('hidden');$('demo').textContent='演示播放中…';view('hero');};
- $('demo').addEventListener('click',startDemo);
+ $('demo').addEventListener('click',()=>{startDemo();$('settings-dialog').close();});
  const recordButton=document.createElement('button');recordButton.className='quiet';recordButton.textContent='保存 15 秒演示视频';recordButton.id='record-demo';$('demo').after(recordButton);
  recordButton.addEventListener('click',()=>{recordButton.disabled=true;recordButton.textContent='正在录制，请保持页面在前台…';recordDemo(canvas,startDemo,()=>{recordButton.disabled=false;recordButton.textContent='保存 15 秒演示视频';},error=>{recordButton.disabled=false;recordButton.textContent=error.message;});});
  $('stop-demo').addEventListener('click',()=>{stopDemo();cat.look.bodyFollow=$('body-follow').checked;input.setActive(false);cat.play('idle');});
@@ -154,7 +156,7 @@ function animate(){
  }
  orbit.update();renderer.render(scene,camera);frames++;statsElapsed+=raw;
  if(statsElapsed>.6){$('stats').textContent=`${Math.round(frames/statsElapsed)} FPS · ${(statsElapsed/frames*1000).toFixed(1)} ms`;
-  if(cat)$('debug-readout').textContent=`${renderer.info.render.triangles.toLocaleString()} 三角面 · ${renderer.info.render.calls} 次绘制 · 32 根骨骼｜目标 ${cat.spatialTarget?.position.toArray().map(v=>v.toFixed(2)).join(', ')??'未激活'}｜位置 ${cat.root.position.toArray().map(v=>v.toFixed(2)).join(', ')}｜追踪角 ${(cat.look.yaw*180/Math.PI).toFixed(1)}° / ${(cat.look.pitch*180/Math.PI).toFixed(1)}°`;
+  if(cat)$('debug-readout').textContent=`${renderer.info.render.triangles.toLocaleString()} 三角面 · ${renderer.info.render.calls} 次绘制 · 32 根骨骼｜目标 ${cat.spatialTarget?.position?.toArray().map(v=>v.toFixed(2)).join(', ')??'未激活'}｜位置 ${cat.root.position.toArray().map(v=>v.toFixed(2)).join(', ')}｜追踪角 ${(cat.look.yaw*180/Math.PI).toFixed(1)}° / ${(cat.look.pitch*180/Math.PI).toFixed(1)}°`;
   if(cat){const rawPointer=spatial.rawPointer,filtered=spatial.filteredPointer,g=gestureAdapter.lastGesture,p=lastPerception;
    $('height-source').textContent=rawPointer?.heightSource??'模拟高度';
    $('v1-readout').textContent=`输入 ${rawPointer?.type??'等待'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 倾角 ${rawPointer?(rawPointer.orientation.altitude*180/Math.PI).toFixed(0):'—'}° · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s · 加速度 ${spatial.acceleration.toFixed(2)} m/s²\n羽毛 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m · 高度 ${p?.targetHeight.toFixed(2)??'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 兴趣 ${brain.interest.toFixed(2)} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
@@ -163,5 +165,8 @@ function animate(){
  }
 }
 const resize=()=>{const {width,height}=canvas.getBoundingClientRect();renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);resize();
-$('compare').addEventListener('click',()=>$('comparison').showModal());
+$('settings-open').addEventListener('click',()=>$('settings-dialog').showModal());
+$('settings-close').addEventListener('click',()=>$('settings-dialog').close());
+$('settings-dialog').addEventListener('click',e=>{const r=$('settings-dialog').getBoundingClientRect();if(e.target===$('settings-dialog')&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))$('settings-dialog').close();});
+$('compare').addEventListener('click',()=>{$('settings-dialog').close();$('comparison').showModal();});
 load().catch(error=>{$('loading').textContent='加载失败，请刷新重试。'+error.message;console.error(error);});animate();

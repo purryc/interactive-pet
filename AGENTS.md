@@ -10,6 +10,8 @@
 - `output/`: editable current Blender asset, GLB, mapping, preview and selected stills; v6 is the local reconstruction input.
 - `web/`: Vite application and tests; `web/public/assets/` is the runtime copy of the reviewed GLB and mapping.
 - `web/src/v1/`: V1 spatial input, virtual wand and feather, cat perception/decision, two-finger treat, and local CSV logging. Keep browser events at the input boundary; the cat reacts to perceived objects.
+- `src/build_wand_v2.py`: deterministic Blender build for the reference-led cat wand; save the editable source as `output/cat_wand_v2.blend`, export a small runtime GLB to `web/public/assets/`, and review the mesh and render before shipping.
+- `reference/wand_reference_v1.png`: private visual reference supplied in chat. Keep it locally for reconstruction, but do not publish the product photograph without a rights decision.
 - `qa/`: small verification reports and reviewed screenshots only. Generated caches, local environments and frame sequences stay out of Git.
 
 ## Conventions

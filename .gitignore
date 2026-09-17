@@ -11,5 +11,6 @@ qa/*.blend
 qa/*.blend1
 output/*.blend1
 output/*.zip
+reference/wand_reference_v1.png
 *.pyc
 __pycache__/

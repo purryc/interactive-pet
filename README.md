@@ -1,8 +1,8 @@
-# Interactive Pet · Miso
+# Interactive Pet · Heihei
 
 一只可以在浏览器里逗弄的四足暹罗猫。模型按用户的 Q 版设定制作：圆润的身体、短厚的腿、蓝眼睛和重点色耳爪。V1 将 Apple Pencil 或鼠标输入映射为 3D 逗猫棒，羽毛有惯性与摆动，猫感知羽毛后自行决定观察、靠近、追逐、伸爪或扑跳。V0 的 12 个骨骼动作与手动控制仍可从折叠面板使用。
 
-![Miso v10 四足模型](output/siamese_cat_quadruped_hero_v10.png)
+![Heihei v10 四足模型](output/siamese_cat_quadruped_hero_v10.png)
 
 [在线体验](https://purryc.github.io/interactive-pet/) · [完整动作预览](output/siamese_cat_quadruped_v10.mp4)
 
@@ -15,11 +15,11 @@ npm ci
 npm run dev
 ```
 
-打开 `http://localhost:5179/`。macOS 也可以双击根目录的 `launch_miso.command`。iPad 与 Mac 在同一网络时，可在 iPad Safari 打开 Mac 的局域网地址及 `5179` 端口。执行 `npm test` 检查实际 GLB 和 V1 决策链，执行 `npm run build` 生成静态网页。
+打开 `http://localhost:5179/`。macOS 也可以双击根目录的 `launch_heihei.command`；旧的 `launch_miso.command` 仍可用。iPad 与 Mac 在同一网络时，可在 iPad Safari 打开 Mac 的局域网地址及 `5179` 端口。执行 `npm test` 检查实际 GLB 和 V1 决策链，执行 `npm run build` 生成静态网页。
 
 ## 怎么玩
 
-- **逗猫棒（默认）**：Apple Pencil 悬停或移动鼠标，驱动棒身、末端、绳和羽毛。猫先关注羽毛，再按距离、高度与速度决定行动。滑块用于模拟网页拿不到的离屏高度；把高度调高，可测试准备、扑跳与扑空。
+- **逗猫棒（默认）**：Apple Pencil 悬停或移动鼠标，驱动浅色木杆、绳、编织球和羽毛。Heihei 先关注羽毛，再按距离、高度与速度决定行动。滑块用于模拟网页拿不到的离屏高度；把高度调高，可测试准备、扑跳与扑空。观察、零食、视角、动作、参数和记录都在右上角「设置」里。
 - **双指零食**：在零食附近用两指捏合并移动，松开后零食下落；猫靠近并低头闻。它是未来双指悬停的触屏代理。
 - **观察**：拖动旋转、滚动缩放，或切换正面、侧面、背面。
 - **手动动作与 V0 控制**：展开后可使猫直接转头、点击移动、播放 12 个动作。手动动作不会被 V1 自主决策立即打断。
@@ -34,6 +34,8 @@ npm run dev
 | [`output/siamese_cat_quadruped_v10.blend`](output/siamese_cat_quadruped_v10.blend) | Blender 5.2 可编辑模型，32 根骨骼、12 个 Action、展示时间线 |
 | [`output/siamese_cat_quadruped_v10.glb`](output/siamese_cat_quadruped_v10.glb) | 网页运行用骨骼动画模型 |
 | [`output/cat_asset_config_v10.json`](output/cat_asset_config_v10.json) | 骨骼映射、动作名、坐标和交互参数 |
+| [`output/cat_wand_v2.blend`](output/cat_wand_v2.blend) | 可编辑逗猫棒：竹杆、绳结、编织球、分层羽片和羽绒丝 |
+| [`web/public/assets/cat_wand_v2.glb`](web/public/assets/cat_wand_v2.glb) | 网页用逗猫棒，Rod 与 Lure 可独立摆动 |
 | [`output/siamese_cat_quadruped_v10.mp4`](output/siamese_cat_quadruped_v10.mp4) | 24.67 秒动作预览 |
 
 Blender 中选中 `Cat_Rig` 并进入 Pose Mode 可以编辑骨骼。要单独修改 Action，先静音 `Quadruped showcase` NLA 轨道。Walk／Run 是原地动画，位移由网页控制。GLB 采用 Y 向上、+Z 朝前，换算尺寸以配置文件为准。
@@ -42,13 +44,15 @@ Blender 中选中 `Cat_Rig` 并进入 Pose Mode 可以编辑骨骼。要单独�
 
 `web/src/` 将模型、动作、头颈追踪、移动和输入适配分开；`web/src/v1/` 实现空间输入、逗猫棒与羽毛、猫的感知／决策、双指零食和本地记录。`src/` 保存 v10 的建模、绑定、动作、导出及回导脚本；`reference/` 保存选定设定图和[来源说明](reference/README.md)。v10 的 Blender 重建需要 `output/siamese_cat_quadruped_v6.blend`，它已包含在仓库中。可在安装 Blender 5.2 和 Python 后运行：
 
+逗猫棒可以通过 `blender -b --python src/build_wand_v2.py` 单独重建。聊天中提供的商品照片只作为本地视觉参照，未加入公开仓库；[近景检查图](qa/web/wand_v2_detail.png)展示导出的绳球与羽片。该模型是风格化重建，羽毛采用网格羽片和细绒丝，没有毛发模拟。
+
 ```sh
 python3 -m venv qa/.venv_sculpt
 qa/.venv_sculpt/bin/pip install -r src/requirements_sculpt.txt
 qa/.venv_sculpt/bin/python src/produce_v10.py
 ```
 
-若 Blender 命令未在 PATH 中，可通过 `BLENDER_BIN` 指定其可执行文件。构建会重写 v10 输出；需要保留改动时先另存副本。所有 12 个动作通过逐帧网格及边界检查，1902 个支撑爪样本通过接地检查，GLB 回导和网页的 5 项控制器测试通过；详见 [`qa/anatomy_review_v10.md`](qa/anatomy_review_v10.md) 与 [`qa/web/acceptance_v10.md`](qa/web/acceptance_v10.md)。
+若 Blender 命令未在 PATH 中，可通过 `BLENDER_BIN` 指定其可执行文件。构建会重写 v10 输出；需要保留改动时先另存副本。所有 12 个动作通过逐帧网格及边界检查，1902 个支撑爪样本通过接地检查，GLB 回导和网页的 11 项控制器及模型测试通过；详见 [`qa/anatomy_review_v10.md`](qa/anatomy_review_v10.md) 与 [`qa/web/acceptance_v10.md`](qa/web/acceptance_v10.md)。
 
 ## 当前边界
 
