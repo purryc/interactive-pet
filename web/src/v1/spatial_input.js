@@ -42,6 +42,7 @@ export class SpatialInputSystem {
     this.positionSmoothing=15;this.heightSmoothing=11;this.tiltSmoothing=13;
     this.rawPointer=null;this.filteredPointer=null;this.lastPosition=null;this.lastTime=null;this.acceleration=0;
     this.onChange=null;this.mode='wand';this.lastPenEvent=null;this.poseHistory=new PoseHistory();this.samples=[];this.nativeActive=false;
+    this.nativeHover=null;this.nativeContact=null;
     this.move=e=>{if(e.pointerType==='pen'&&(this.nativeActive||globalThis.window?.heiheiNativeBridge))return;const coalesced=e.getCoalescedEvents?.();for(const sample of coalesced?.length?coalesced:[e])this.handlePointer(sample);};
     // A modal settings dialog makes the canvas inert. Keep Pencil diagnostics
     // live while the user hovers over the visible scene beside that dialog.
@@ -69,11 +70,21 @@ export class SpatialInputSystem {
     }
   }
   handleNative(data){
-    if(!data||data.phase==='ended'||data.phase==='cancelled'){this.nativeActive=false;this.deactivate();return;}
+    if(!data)return;
+    const ended=data.phase==='ended'||data.phase==='cancelled';
+    if(!data.channel&&ended){this.nativeHover=this.nativeContact=null;this.nativeActive=false;this.deactivate();return;}
+    const channel=data.channel??(data.contact?'contact':'hover');
+    if(channel==='contact')this.nativeContact=ended?null:data;
+    else this.nativeHover=ended?null:data;
+    const active=this.nativeContact??this.nativeHover;
+    if(!active){this.nativeActive=false;this.deactivate();return;}
+    // During Pencil down/up, UIKit may finish the hover recognizer after the
+    // touch recognizer has already begun. Keep the active touch authoritative.
+    if(ended&&active!==data&&channel==='hover'&&this.nativeContact)return;
     this.nativeActive=true;
-    this.handlePointer({clientX:data.x*globalThis.window.innerWidth,clientY:data.y*globalThis.window.innerHeight,
-      pointerType:'pen',buttons:data.contact?1:0,timeStamp:data.timestamp,altitudeAngle:data.altitude,azimuthAngle:data.azimuth,
-      hoverDistance:data.zOffset,hoverDistanceSource:data.distanceSource??'UIKit normalized zOffset',native:true});
+    this.handlePointer({clientX:active.x*globalThis.window.innerWidth,clientY:active.y*globalThis.window.innerHeight,
+      pointerType:'pen',buttons:this.nativeContact?1:0,timeStamp:active.timestamp,altitudeAngle:active.altitude,azimuthAngle:active.azimuth,
+      hoverDistance:active.zOffset,hoverDistanceSource:active.distanceSource??'UIKit normalized zOffset',native:true});
   }
   handlePointer(e){
     if(this.mode!=='wand'||e.pointerType==='touch'&&e.isPrimary===false)return;

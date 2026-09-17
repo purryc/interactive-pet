@@ -69,19 +69,19 @@ final class HoverViewController: UIViewController, UIGestureRecognizerDelegate, 
         case .cancelled, .failed: phase = "cancelled"
         default: return
         }
-        send(phase: phase, point: hover.location(in: webView), altitude: hover.altitudeAngle,
+        send(channel: "hover", phase: phase, point: hover.location(in: webView), altitude: hover.altitudeAngle,
              azimuth: hover.azimuthAngle(in: webView), distance: hover.zOffset, contact: false,
              timestamp: ProcessInfo.processInfo.systemUptime * 1000)
     }
 
     @objc private func onTouch(_ probe: PencilTouchProbe) {
         guard let touch = probe.currentTouch else { return }
-        send(phase: probe.phase, point: touch.location(in: webView), altitude: touch.altitudeAngle,
+        send(channel: "contact", phase: probe.phase, point: touch.location(in: webView), altitude: touch.altitudeAngle,
              azimuth: touch.azimuthAngle(in: webView), distance: 0, contact: probe.phase != "ended",
              timestamp: touch.timestamp * 1000)
     }
 
-    private func send(phase: String, point p: CGPoint, altitude: CGFloat, azimuth: CGFloat,
+    private func send(channel: String, phase: String, point p: CGPoint, altitude: CGFloat, azimuth: CGFloat,
                       distance: CGFloat, contact: Bool, timestamp: Double) {
         let width = max(1, webView.bounds.width)
         let height = max(1, webView.bounds.height)
@@ -95,6 +95,7 @@ final class HoverViewController: UIViewController, UIGestureRecognizerDelegate, 
                              phase, contact ? " 接触" : " 悬停", samples, poseLabel,
                              shown.altitude * 180 / .pi, shown.azimuth * 180 / .pi, shown.distance)
         let packet: [String: Any] = [
+            "channel": channel,
             "phase": phase,
             "x": min(1, max(0, p.x / width)),
             "y": min(1, max(0, p.y / height)),
