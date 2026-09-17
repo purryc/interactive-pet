@@ -35,10 +35,13 @@ test('Pointer Events tilt converts to camera-facing direction without azimuth wr
   assert.ok(poseDirection({altitude:Math.PI/2,azimuth:0},camera).z<-.99);
   const history=new PoseHistory();
   const first=readPose({altitudeAngle:Math.PI/2,azimuthAngle:0,tiltX:0,tiltY:0},history);
-  assert.equal(first.source,'default');assert.equal(first.observedVariation,false);
+  assert.equal(first.source,'default');assert.equal(first.fieldStatus,'unverified-default');assert.equal(first.observedVariation,false);
   const second=readPose({tiltX:30,tiltY:-10},history);
-  assert.equal(second.source,'tilt');assert.equal(second.observedVariation,true);
-  assert.equal(history.states.hover.count,2);
+  assert.equal(second.source,'tilt');assert.equal(second.fieldStatus,'measured');assert.equal(second.observedVariation,true);
+  const missing=readPose({pointerType:'pen',buttons:0},history);
+  assert.equal(missing.source,'default');assert.equal(missing.fieldStatus,'missing');
+  assert.equal(missing.observedVariation,true,'historic variation is distinct from this event');
+  assert.equal(history.states.hover.count,3);
   const contact=readPose({pointerType:'pen',buttons:1,altitudeAngle:Math.PI/2,azimuthAngle:0,tiltX:0,tiltY:0},history);
   assert.equal(contact.source,'default');assert.equal(contact.observedVariation,false);
   assert.equal(history.states.contact.count,1);
@@ -69,6 +72,25 @@ test('120 Hz chain has 12 dynamic links, stays bounded and resets after visibili
   assert.ok(span<=physics.ropeLength+physics.ballRadius+physics.ropeLength*.05,`rope stretched to ${span}`);
   physics.clearAccumulation();assert.equal(physics.accumulator,0);
   physics.update(0,null);assert.equal(physics.active,false);
+});
+
+test('low wand start and repeated vertical shakes do not launch the lure offscreen',async()=>{
+  const physics=await createPhysics(catAt(5,0,0));
+  let highest=0,fastest=0,lowestFeather=Infinity;
+  for(let i=0;i<360;i++){
+    const height=.32+.04*Math.sin(2*Math.PI*4*i/120);
+    const state=physics.update(1/120,input(0,height,.4));
+    highest=Math.max(highest,state.position.y);fastest=Math.max(fastest,state.speed);
+    for(let k=0;k<physics.plumes.length;k++)for(const segment of physics.plumes[k].segments){
+      const q=segment.body.rotation();
+      const verticalAxis=1-2*(q.x*q.x+q.z*q.z);
+      const bottom=segment.body.translation().y-Math.abs(verticalAxis)*segment.length*.43-physics.plumeRadii[k];
+      lowestFeather=Math.min(lowestFeather,bottom);
+    }
+  }
+  assert.ok(highest<.35,`ball was launched to ${highest} m`);
+  assert.ok(fastest<2,`ball speed spiked to ${fastest} m/s`);
+  assert.ok(lowestFeather>-.002,`feather crossed the floor by ${-lowestFeather} m`);
 });
 
 test('cat head collision blocks initial overlap and moving contact stays shallow',async()=>{

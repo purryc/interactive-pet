@@ -8,6 +8,13 @@ const identity={x:0,y:0,z:0,w:1};
 const SEGMENTS=12;
 const PLUMES=['Honey_plume','Pale_plume','Ochre_plume','Narrow_plume','Soft_side_plume'];
 const PLUME_LENGTHS=[.177,.146,.164,.127,.142];
+const plumeDirection=(index,ballHeight)=>{
+  // Fan the feathers out when the lure is low, so their ground colliders can
+  // settle beside the ball instead of forcing fifteen vertical joints upward.
+  const fall=Math.max(0,Math.min(1,(ballHeight-.10)/.18));
+  const angle=-Math.PI/2+(index-2)*.16;
+  return new Vector3(Math.cos(angle)*(1-fall),.35*(1-fall)-fall,Math.sin(angle)*(1-fall)).normalize();
+};
 const TOY_GROUP=(0x0001<<16)|0x0006;
 const CAT_GROUP=(0x0002<<16)|0x0001;
 const GROUND_GROUP=(0x0004<<16)|0x0001;
@@ -115,13 +122,15 @@ export class WandPhysics{
     PLUMES.forEach((name,index)=>{
       const segments=[];let parentBody=this.ballBody;
       const length=PLUME_LENGTHS[index]/3;
+      const direction=plumeDirection(index,ballPos.y);
+      const rotation=new Quaternion().setFromUnitVectors(new Vector3(0,-1,0),direction);
       for(let j=0;j<3;j++){
-        const x=(index-2)*.008, y=ballPos.y-this.ballRadius-length*(j+.5),z=(index%2?1:-1)*.006;
         const radius=this.plumeRadii[index];
-        const start=this.projectOut(new Vector3(x+ballPos.x,Math.max(length*.5+.002,y),z+ballPos.z),radius+length*.5);
-        const body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(...start.toArray()).setAdditionalMass(.003).setLinearDamping(3.2).setAngularDamping(5).setCcdEnabled(true));
+        const start=this.projectOut(ballPos.clone().addScaledVector(direction,this.ballRadius+length*(j+.5)),radius);
+        const body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(...start.toArray()).setRotation(rotation).setAdditionalMass(.003).setLinearDamping(3.2).setAngularDamping(5).setCcdEnabled(true));
         const collider=this.world.createCollider(RAPIER.ColliderDesc.capsule(length*.43,radius).setDensity(.16).setFriction(.65).setCollisionGroups(TOY_GROUP),body);
-        const joint=this.world.createImpulseJoint(RAPIER.JointData.spherical(V(0,-(j?length*.48:this.ballRadius),0),V(0,length*.48,0)),parentBody,body,true);
+        const anchor=j?V(0,-length*.48,0):V(direction.x*this.ballRadius,direction.y*this.ballRadius,direction.z*this.ballRadius);
+        const joint=this.world.createImpulseJoint(RAPIER.JointData.spherical(anchor,V(0,length*.48,0)),parentBody,body,true);
         joint.setContactsEnabled(false);
         segments.push({body,collider,joint,length});parentBody=body;
       }
@@ -167,10 +176,11 @@ export class WandPhysics{
     const ball=vec(this.ballBody.translation());
     for(let i=0;i<this.plumes.length;i++){
       const plume=this.plumes[i];
+      const direction=plumeDirection(i,ball.y);
       for(let j=0;j<plume.segments.length;j++){
         const segment=plume.segments[j];
         const current=vec(segment.body.translation());
-        const target=ball.clone().add(new Vector3((i-2)*.009,-this.ballRadius-(j+.5)*segment.length,(i%2?1:-1)*.007));
+        const target=ball.clone().addScaledVector(direction,this.ballRadius+(j+.5)*segment.length);
         const spring=target.sub(current).multiplyScalar(.00025);
         segment.body.applyImpulse(spring,true);
       }

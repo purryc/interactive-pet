@@ -12,7 +12,7 @@ export class CatBrain {
   constructor(cat){
     this.cat=cat;this.state='IDLE';this.reason='等待羽毛';this.nextAction='—';this.time=0;this.stateTime=0;
     this.reactionDelay=.25;this.recoveryTime=.68;this.pawReach=.34;this.jumpReach=.86;this.chaseSpeed=.16;
-    this.lastAction=null;this.lastActionTime=-10;this.lastActionPosition=null;this.jumpTarget=null;this.missed=false;
+    this.lastAction=null;this.lastActionTime=-10;this.lastActionPosition=null;this.lastPaw='pawRight';this.jumpTarget=null;this.missed=false;
     this.interest=.5;this.energy=1;this.failedAttempts=0;this._moveTime=0;this.contactCooldown=new Map();this.lastContact=null;
   }
   onContact(contact){
@@ -35,9 +35,12 @@ export class CatBrain {
   update(dt,perception){
     this.time+=dt;this.stateTime+=dt;this._moveTime+=dt;
     this.finishAction(perception);
+    // Keep the gaze on the live lure even while a paw or jump clip is committed.
+    this.cat.setTarget(perception.targetVisible
+      ?{position:perception.targetPosition,velocity:perception.targetVelocity,active:true,type:perception.kind}
+      :{active:false});
     if(['CROUCH','JUMP','LAND','PAW','SNIFF'].includes(this.state)){
       // A committed action runs to completion even when the wand retreats.
-      if(this.jumpTarget&&this.state!=='PAW')this.cat.setTarget({position:this.jumpTarget,active:true});
       this.nextAction='完成当前动作';return;
     }
     if(this.state==='RECOVER'){
@@ -45,11 +48,10 @@ export class CatBrain {
       this.enter(perception.targetVisible?'WATCH':'IDLE','恢复完成');
     }
     if(!perception.targetVisible){
-      if(this.state!=='IDLE'){this.cat.movement.stop();this.cat.setTarget({active:false});this.cat.animation.play('idle');this.enter('IDLE','目标离开视野');}
+      if(this.state!=='IDLE'){this.cat.movement.stop();this.cat.animation.play('idle');this.enter('IDLE','目标离开视野');}
       this.nextAction='等待';return;
     }
     const p=perception;
-    this.cat.setTarget({position:p.targetPosition,velocity:p.targetVelocity,active:true,type:p.kind});
     if(this.state==='IDLE'){this.cat.movement.stop();this.cat.animation.play('idle');this.enter('NOTICE','发现'+(p.kind==='treat'?'零食':'羽毛'));this.nextAction='转头关注';return;}
     if(this.state==='NOTICE'){
       this.nextAction='观察';if(this.stateTime>=this.reactionDelay)this.enter('WATCH','反应延迟结束');else return;
@@ -70,8 +72,8 @@ export class CatBrain {
       this.enter('CROUCH','羽毛较高，准备扑跳');this.nextAction='跳跃';return;
     }
     if(actionReady&&paw){
-      this.cat.movement.stop();const local=p.targetPosition.clone().sub(this.cat.root.position);const left=local.x<0;
-      const action=left?'pawLeft':'pawRight';this.cat.play(action);this.lastAction=action;this.lastActionTime=this.time;this.lastActionPosition=p.targetPosition.clone();
+      this.cat.movement.stop();const action=this.pawFor(p.targetPosition);
+      this.cat.play(action);this.lastPaw=action;this.lastAction=action;this.lastActionTime=this.time;this.lastActionPosition=p.targetPosition.clone();
       this.enter('PAW','羽毛进入前爪范围');this.nextAction='恢复';return;
     }
     if(p.targetSpeed>this.chaseSpeed&&p.targetHeight<.29&&p.targetDistance>.23){
@@ -79,6 +81,13 @@ export class CatBrain {
     }
     if(p.targetDistance>.37){this.approach(p,false,.25,'羽毛在远处');return;}
     this.cat.movement.stop();this.cat.animation.play('idle');this.enter('WATCH','羽毛在近处');this.nextAction=actionReady?'观察或伸爪':'等待新变化';this.energy=Math.min(1,this.energy+dt*.015);
+  }
+  pawFor(position){
+    const delta=position.clone().sub(this.cat.root.position),yaw=this.cat.root.rotation.y;
+    const localX=Math.cos(yaw)*delta.x-Math.sin(yaw)*delta.z;
+    if(localX>.075)return 'pawLeft';
+    if(localX<-.075)return 'pawRight';
+    return this.lastPaw==='pawLeft'?'pawRight':'pawLeft';
   }
   approach(p,run,offset,reason){
     const state=run?'CHASE':'APPROACH';if(this.state!==state)this.enter(state,reason);

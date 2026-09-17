@@ -35,8 +35,9 @@ function frameP95(){let seen=0,limit=Math.ceil(frameCount*.95);for(let i=0;i<fra
 const degrees=r=>r===null||r===undefined?'—':(r*180/Math.PI).toFixed(1)+'°';
 function poseStateText(name,state){
  const p=state.last;
- return `${name} ${state.count}次 · 球面 ${degrees(p?.altitude)} / ${degrees(p?.azimuth)} · tilt ${p?.tiltX??'—'} / ${p?.tiltY??'—'} · 变化 ${state.varied?'有':'无'}`;
+ return `${name} ${state.count}次 · 最近事件球面 ${degrees(p?.altitude)} / ${degrees(p?.azimuth)} · tilt ${p?.tiltX??'—'} / ${p?.tiltY??'—'} · 历史曾变化 ${state.varied?'有':'无'}`;
 }
+const poseStatus={measured:'当前事件有有效角度',held:'本事件缺字段，短时沿用上次角度','unverified-default':'当前仅见默认角度，尚未证实',missing:'当前事件缺少角度字段'};
 let spatial,wand,brain,perception,treat,gestureAdapter,lastPerception=null,lastFeather=null;
 const logger=new InteractionLogger();
 const debugParams={targetX:0,targetZ:.60};
@@ -74,7 +75,7 @@ async function load(){
  input=new InputAdapter(canvas,camera,target=>cat.setTarget(target),(p,run)=>{stopDemo();cat.moveTo(p,run);});
  spatial=new SpatialInputSystem(canvas,camera,orbit.target);window.heiheiLoadStage='initializing physics';wand=await PhysicalCatWand.create(scene,wandGltf,cat);window.heiheiLoadStage='physics ready';brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
  gestureAdapter.onGesture=g=>{if(mode==='treat')treat.handle(g);};
- spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · 姿态 ${raw.orientation.source==='default'?'尚无实测角度':raw.orientation.source} · 当前状态角度${raw.orientation.observedVariation?'有':'未见'}变化 · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
+ spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · ${poseStatus[raw.orientation.fieldStatus]} · 来源 ${raw.orientation.source} · 历史曾变化 ${raw.orientation.observedVariation?'有':'无'} · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
  $('hover-height').addEventListener('input',()=>{const value=Number($('hover-height').value);spatial.setSimulatedHeight(value);$('hover-height-value').value=value.toFixed(2)+' m';});
  v1Range('位置平滑',2,30,1,()=>spatial.positionSmoothing,v=>spatial.positionSmoothing=v);
  v1Range('高度平滑',2,30,1,()=>spatial.heightSmoothing,v=>spatial.heightSmoothing=v);
@@ -165,7 +166,7 @@ function animate(){
   if(cat)$('debug-readout').textContent=`${renderer.info.render.triangles.toLocaleString()} 三角面 · ${renderer.info.render.calls} 次绘制 · 32 根骨骼｜目标 ${cat.spatialTarget?.position?.toArray().map(v=>v.toFixed(2)).join(', ')??'未激活'}｜位置 ${cat.root.position.toArray().map(v=>v.toFixed(2)).join(', ')}｜追踪角 ${(cat.look.yaw*180/Math.PI).toFixed(1)}° / ${(cat.look.pitch*180/Math.PI).toFixed(1)}°`;
   if(cat){const rawPointer=spatial.rawPointer,filtered=spatial.filteredPointer,g=gestureAdapter.lastGesture,p=lastPerception;
    $('height-source').textContent=rawPointer?.heightSource??'模拟高度';
-   $('v1-readout').textContent=`输入 ${rawPointer?.source??'等待'} · ${rawPointer?.contact?'接触':'悬停'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 当前姿态 ${rawPointer?.orientation.source??'—'} · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s\n${poseStateText('悬停',spatial.poseHistory.states.hover)}\n${poseStateText('接触',spatial.poseHistory.states.contact)}\n球 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 物理 ${wand.physics.steps} 步 · 接触 ${wand.physics.contacts.map(c=>c.part).join(', ')||'无'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
+   $('v1-readout').textContent=`输入 ${rawPointer?.source??'等待'} · ${rawPointer?.contact?'接触':'悬停'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 当前姿态 ${rawPointer?.orientation.source??'—'}（${poseStatus[rawPointer?.orientation.fieldStatus]??'等待'}） · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s\n${poseStateText('悬停',spatial.poseHistory.states.hover)}\n${poseStateText('接触',spatial.poseHistory.states.contact)}\n球 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 物理 ${wand.physics.steps} 步 · 接触 ${wand.physics.contacts.map(c=>c.part).join(', ')||'无'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
   }
   frames=0;statsElapsed=0;
  }

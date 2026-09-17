@@ -32,6 +32,22 @@ test('pointer pipeline retains raw and filtered samples separately, with honest 
  assert.ok(Math.abs(raised.x-.2)<1e-6&&Math.abs(raised.y)<1e-6,'hover depth must not pull the rod away from the nib');
  assert.equal(spatial.rawPointer.contact,false);spatial.deactivate();assert.equal(spatial.filteredPointer.active,false);
 });
+test('brief missing Pencil angle fields hold the last pose without claiming a fresh measurement',()=>{
+ const canvas={addEventListener(){},removeEventListener(){},getBoundingClientRect(){return {left:0,top:0,width:500,height:500};}};
+ const camera=new PerspectiveCamera(40,1,.01,10);camera.position.set(0,.6,1);camera.lookAt(0,.24,0);camera.updateMatrixWorld();
+ const spatial=new SpatialInputSystem(canvas,camera);
+ spatial.handlePointer({clientX:250,clientY:250,pointerType:'pen',buttons:0,timeStamp:1000,altitudeAngle:.7,azimuthAngle:1.2});
+ const direction=spatial.rawPointer.direction.clone();
+ spatial.handlePointer({clientX:260,clientY:250,pointerType:'pen',buttons:0,timeStamp:1016});
+ assert.equal(spatial.rawPointer.orientation.source,'held');
+ assert.equal(spatial.rawPointer.orientation.fieldStatus,'held');
+ assert.equal(spatial.rawPointer.orientation.fields.spherical,false);
+ assert.ok(spatial.rawPointer.direction.distanceTo(direction)<1e-8);
+ spatial.handlePointer({clientX:260,clientY:250,pointerType:'pen',buttons:0,timeStamp:1150});
+ assert.equal(spatial.rawPointer.orientation.source,'default');
+ assert.equal(spatial.rawPointer.orientation.fieldStatus,'missing');
+ spatial.dispose();
+});
 test('native Pencil packet preserves the nib screen position and suppresses duplicate web pen input',()=>{
  const previousWindow=globalThis.window;
  globalThis.window={innerWidth:1024,innerHeight:768,addEventListener(){},removeEventListener(){}};
@@ -77,10 +93,36 @@ test('cat notices before acting, commits to jump after retreat, lands and recove
  step(brain,cat,high);assert.equal(brain.state,'NOTICE');assert.equal(cat.animation.current,'idle');
  step(brain,cat,high,10);assert.equal(brain.state,'NOTICE');
  step(brain,cat,high,10);assert.equal(brain.state,'CROUCH');assert.equal(cat.played,'jump');
- cat.animation.current='jump';step(brain,cat,null);assert.equal(brain.state,'JUMP');assert.ok(cat.target.active);
+ cat.animation.current='jump';step(brain,cat,null);assert.equal(brain.state,'JUMP');assert.equal(cat.target.active,false);
  cat.animation.current='land';step(brain,cat,null);assert.equal(brain.state,'LAND');assert.equal(brain.missed,true);
  cat.animation.current='idle';step(brain,cat,null);assert.equal(brain.state,'RECOVER');
  step(brain,cat,null,45);assert.equal(brain.state,'IDLE');assert.equal(brain.failedAttempts,1);
+});
+test('both front paws play on their own side and alternate when the lure is centered',()=>{
+ const cat=fakeCat(),brain=new CatBrain(cat);
+ assert.equal(brain.pawFor(new Vector3(.2,.2,.2)),'pawLeft');
+ assert.equal(brain.pawFor(new Vector3(-.2,.2,.2)),'pawRight');
+ cat.root.rotation.y=Math.PI/2;
+ assert.equal(brain.pawFor(new Vector3(0,.2,-.2)),'pawLeft');
+ assert.equal(brain.pawFor(new Vector3(0,.2,.2)),'pawRight');
+ cat.root.rotation.y=0;
+ assert.equal(brain.pawFor(new Vector3(0,.2,.2)),'pawLeft');
+ brain.lastPaw='pawLeft';
+ assert.equal(brain.pawFor(new Vector3(0,.2,.2)),'pawRight');
+ const left=feather(.15,.18,.18),right=feather(-.15,.18,.18);
+ step(brain,cat,left,20);
+ assert.equal(cat.played,'pawLeft');
+ cat.animation.current='idle';step(brain,cat,right,120);
+ assert.equal(cat.played,'pawRight');
+});
+test('gaze follows the current ball throughout paw, jump and recovery',()=>{
+ const cat=fakeCat(),brain=new CatBrain(cat);
+ for(const [state,clip] of [['PAW','pawLeft'],['JUMP','jump'],['RECOVER','idle']]){
+  brain.enter(state,'test');cat.animation.current=clip;
+  const a=feather(.18,.24,.18),b=feather(-.15,.27,.2);
+  step(brain,cat,a);assert.ok(cat.target.position.distanceTo(a.position)<1e-8,`${state} first target`);
+  step(brain,cat,b);assert.ok(cat.target.position.distanceTo(b.position)<1e-8,`${state} moving target`);
+ }
 });
 test('low moving feather prompts pursuit and CSV exports observable states',()=>{
  const cat=fakeCat(),brain=new CatBrain(cat),moving=feather(.65,.09,.3,.3);

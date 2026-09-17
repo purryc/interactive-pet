@@ -27,7 +27,8 @@ export function readPose(event,history){
   const tiltTrusted=t&&(!tiltDefault||observed?.tiltVaried);
   const choice=sphericalTrusted?s:tiltTrusted?t:s??t??{altitude:Math.PI/2,azimuth:0};
   const source=sphericalTrusted?'spherical':tiltTrusted?'tilt':'default';
-  return {altitude:clamp(choice.altitude,0,Math.PI/2),azimuth:choice.azimuth,source,fields:{spherical,tilt,altitudeAngle:s?.altitude??null,azimuthAngle:s?.azimuth??null,tiltX:tilt?event.tiltX:null,tiltY:tilt?event.tiltY:null},observedVariation:observed?.varied??false};
+  const fieldStatus=source!=='default'?'measured':spherical||tilt?'unverified-default':'missing';
+  return {altitude:clamp(choice.altitude,0,Math.PI/2),azimuth:choice.azimuth,source,fieldStatus,fields:{spherical,tilt,altitudeAngle:s?.altitude??null,azimuthAngle:s?.azimuth??null,tiltX:tilt?event.tiltX:null,tiltY:tilt?event.tiltY:null},observedVariation:observed?.varied??false};
 }
 
 export class PoseHistory{

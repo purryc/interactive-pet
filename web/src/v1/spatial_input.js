@@ -31,7 +31,7 @@ export class CoordinateMapper {
 }
 
 export class HoverHeightMapper {
-  constructor(){this.min=0;this.max=1;this.virtualScale=.55;this.simulated=.18;}
+  constructor(){this.min=0;this.max=1;this.virtualScale=.22;this.simulated=.18;}
   map(physical){return clamp((physical-this.min)/Math.max(.001,this.max-this.min),0,1)*this.virtualScale;}
 }
 
@@ -42,7 +42,7 @@ export class SpatialInputSystem {
     this.positionSmoothing=15;this.heightSmoothing=11;this.tiltSmoothing=13;
     this.rawPointer=null;this.filteredPointer=null;this.lastPosition=null;this.lastTime=null;this.acceleration=0;
     this.onChange=null;this.mode='wand';this.lastPenEvent=null;this.poseHistory=new PoseHistory();this.samples=[];this.nativeActive=false;
-    this.nativeHover=null;this.nativeContact=null;
+    this.nativeHover=null;this.nativeContact=null;this.lastMeasuredPose=null;
     this.move=e=>{if(e.pointerType==='pen'&&(this.nativeActive||globalThis.window?.heiheiNativeBridge))return;const coalesced=e.getCoalescedEvents?.();for(const sample of coalesced?.length?coalesced:[e])this.handlePointer(sample);};
     // A modal settings dialog makes the canvas inert. Keep Pencil diagnostics
     // live while the user hovers over the visible scene beside that dialog.
@@ -96,7 +96,13 @@ export class SpatialInputSystem {
     const dt=this.lastTime===null?1/60:clamp((timestamp-this.lastTime)/1000,1/240,.15);
     const position=mapped.world.clone();
     const velocity=this.lastPosition?position.clone().sub(this.lastPosition).divideScalar(dt):new Vector3();
-    const pose=readPose(e,this.poseHistory);
+    let pose=readPose(e,this.poseHistory);
+    if(pose.fieldStatus==='measured')this.lastMeasuredPose={pose,timestamp};
+    else if(pose.fieldStatus==='missing'&&e.pointerType==='pen'&&this.lastMeasuredPose
+      &&timestamp>=this.lastMeasuredPose.timestamp&&timestamp-this.lastMeasuredPose.timestamp<=100){
+      const previous=this.lastMeasuredPose.pose;
+      pose={...pose,altitude:previous.altitude,azimuth:previous.azimuth,source:'held',fieldStatus:'held'};
+    }
     const {altitude,azimuth}=pose;
     const direction=poseDirection(pose,this.mapper.camera);
     const previousSpeed=this.rawPointer?.speed??0;
@@ -119,6 +125,6 @@ export class SpatialInputSystem {
     this.onChange?.(this.rawPointer,this.filteredPointer);
   }
   consumeSamples(){return this.samples.splice(0);}
-  deactivate(){if(this.rawPointer)this.rawPointer.active=false;if(this.filteredPointer)this.filteredPointer.active=false;this.samples.length=0;this.lastTime=null;this.lastPosition=null;this._previousFilteredPosition=null;this.onChange?.(this.rawPointer,this.filteredPointer);}
+  deactivate(){if(this.rawPointer)this.rawPointer.active=false;if(this.filteredPointer)this.filteredPointer.active=false;this.samples.length=0;this.lastTime=null;this.lastPosition=null;this._previousFilteredPosition=null;this.lastMeasuredPose=null;this.onChange?.(this.rawPointer,this.filteredPointer);}
   dispose(){this.canvas.removeEventListener('pointermove',this.move);this.canvas.removeEventListener('pointerdown',this.move);this.canvas.removeEventListener('pointerleave',this.leave);globalThis.document?.removeEventListener('pointermove',this.modalPen,true);globalThis.document?.removeEventListener('pointerdown',this.modalPen,true);globalThis.window?.removeEventListener('heihei-pencil',this.native);}
 }
