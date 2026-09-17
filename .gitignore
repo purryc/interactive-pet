@@ -4,6 +4,7 @@
 web/node_modules/
 web/dist/
 qa/.venv_sculpt/
+qa/ios_build/
 qa/quadruped_frames_*/
 qa/*.log
 qa/*.npz
