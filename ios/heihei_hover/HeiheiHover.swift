@@ -18,6 +18,7 @@ final class HoverViewController: UIViewController, UIGestureRecognizerDelegate, 
     private let webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
     private let status = UILabel()
     private var samples = 0
+    private var lastActivePose: (altitude: CGFloat, azimuth: CGFloat, distance: CGFloat)?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -83,8 +84,14 @@ final class HoverViewController: UIViewController, UIGestureRecognizerDelegate, 
         let width = max(1, webView.bounds.width)
         let height = max(1, webView.bounds.height)
         samples += 1
-        status.text = String(format: "UIKit %@%@ · %d 次 · 倾角 %.1f° · 方位 %.1f° · 距离 %.2f (归一化)",
-                             phase, contact ? " 接触" : " 悬停", samples, altitude * 180 / .pi, azimuth * 180 / .pi, distance)
+        if phase == "began" || phase == "changed" {
+            lastActivePose = (altitude, azimuth, distance)
+        }
+        let shown = lastActivePose ?? (altitude, azimuth, distance)
+        let poseLabel = phase == "ended" || phase == "cancelled" ? "上次有效姿态" : "实时姿态"
+        status.text = String(format: "UIKit %@%@ · %d 次 · %@ 倾角 %.1f° / 方位 %.1f° · 距离 %.2f (归一化)",
+                             phase, contact ? " 接触" : " 悬停", samples, poseLabel,
+                             shown.altitude * 180 / .pi, shown.azimuth * 180 / .pi, shown.distance)
         let packet: [String: Any] = [
             "phase": phase,
             "x": min(1, max(0, p.x / width)),

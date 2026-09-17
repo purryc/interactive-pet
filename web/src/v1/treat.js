@@ -14,7 +14,7 @@ export class TwoFingerTouchAdapter {
     const scaleDelta=prior?distance-prior.distance:0,velocity=prior?{x:(center.x-prior.center.x)/dt,y:(center.y-prior.center.y)/dt}:{x:0,y:0};
     const type=scaleDelta< -2?'PINCH':scaleDelta>2?'SPREAD':'MOVE';
     this.previous={center,distance,angle,time:now};this.active=true;
-    this.emit({type,state:type,center,distance,scaleDelta,angle,velocity,fingerCount:2,world:this.mapper.map(center.x,center.y)?.world??null,phase});
+    this.emit({type,state:type,center,distance,scaleDelta,angle,velocity,fingerCount:2,world:(this.mapper.mapGround?.(center.x,center.y)??this.mapper.map(center.x,center.y))?.world??null,phase});
   }
   emit(gesture){this.lastGesture=gesture;this.onGesture?.(gesture);}
   dispose(){this.canvas.removeEventListener('touchstart',this.start);this.canvas.removeEventListener('touchmove',this.move);this.canvas.removeEventListener('touchend',this.end);this.canvas.removeEventListener('touchcancel',this.end);}

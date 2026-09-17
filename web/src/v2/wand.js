@@ -28,9 +28,12 @@ export class PhysicalCatWand{
     const state=this.physics.update(dt,pointer,samples);
     if(!state){this.setVisible(false);this.state=null;return null;}
     this.setVisible(true);
-    this.group.position.copy(pointer.position);
-    this.lastDirection.copy(pointer.direction);
-    this.group.quaternion.setFromUnitVectors(DOWN,pointer.direction);
+    const latest=samples.at(-1)??pointer;
+    this.lastDirection.copy(latest.direction);
+    // Render from the collision-resolved tie point so the visible rod and
+    // physical rope remain connected, including when the cat blocks the tip.
+    this.group.position.copy(state.tipPosition).addScaledVector(latest.direction,-this.wandLength);
+    this.group.quaternion.setFromUnitVectors(DOWN,latest.direction);
     this.group.scale.setScalar(this.wandLength);
     const points=this.physics.getRopePoints();
     this.featherGroup.position.copy(points.at(-1));

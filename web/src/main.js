@@ -72,7 +72,7 @@ async function load(){
  cat=new CatController(gltf,config);scene.add(cat.root);
  skeleton=new THREE.SkeletonHelper(cat.model);skeleton.visible=false;skeleton.material.depthTest=false;skeleton.renderOrder=10;scene.add(skeleton);
  input=new InputAdapter(canvas,camera,target=>cat.setTarget(target),(p,run)=>{stopDemo();cat.moveTo(p,run);});
- spatial=new SpatialInputSystem(canvas,camera);window.heiheiLoadStage='initializing physics';wand=await PhysicalCatWand.create(scene,wandGltf,cat);window.heiheiLoadStage='physics ready';brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
+ spatial=new SpatialInputSystem(canvas,camera,orbit.target);window.heiheiLoadStage='initializing physics';wand=await PhysicalCatWand.create(scene,wandGltf,cat);window.heiheiLoadStage='physics ready';brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
  gestureAdapter.onGesture=g=>{if(mode==='treat')treat.handle(g);};
  spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · 姿态 ${raw.orientation.source==='default'?'尚无实测角度':raw.orientation.source} · 当前状态角度${raw.orientation.observedVariation?'有':'未见'}变化 · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
  $('hover-height').addEventListener('input',()=>{const value=Number($('hover-height').value);spatial.setSimulatedHeight(value);$('hover-height-value').value=value.toFixed(2)+' m';});

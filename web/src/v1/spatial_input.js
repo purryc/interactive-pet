@@ -4,17 +4,29 @@ import {PoseHistory,poseDirection,readPose,smoothDirection} from '../v2/pose.js'
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 export class CoordinateMapper {
-  constructor(canvas,camera){this.canvas=canvas;this.camera=camera;this.raycaster=new Raycaster();this.plane=new Plane(new Vector3(0,1,0),0);this.interactionRect={x:0,y:0,width:1,height:1};}
+  constructor(canvas,camera,interactionTarget=new Vector3(0,.24,0)){this.canvas=canvas;this.camera=camera;this.interactionTarget=interactionTarget;this.raycaster=new Raycaster();this.plane=new Plane();this.interactionRect={x:0,y:0,width:1,height:1};}
   setInteractionRect(rect){this.interactionRect={...rect};}
-  map(clientX,clientY,planeHeight=0){
+  map(clientX,clientY,hoverDepth=0){
     const bounds=this.canvas.getBoundingClientRect(),r=this.interactionRect;
     const x=(clientX-bounds.left)/bounds.width,y=(clientY-bounds.top)/bounds.height;
     if(x<r.x||x>r.x+r.width||y<r.y||y>r.y+r.height)return null;
     const normalized={x:(x-r.x)/r.width,y:(y-r.y)/r.height};
-    this.plane.constant=-planeHeight;this.raycaster.setFromCamera(new Vector2(x*2-1,1-y*2),this.camera);
+    // A camera-facing plane keeps the projected wand origin under the nib for
+    // every hover height and view angle. The depth moves toward the viewer.
+    const forward=this.camera.getWorldDirection(new Vector3());
+    const planePoint=this.interactionTarget.clone().addScaledVector(forward,-hoverDepth);
+    this.plane.setFromNormalAndCoplanarPoint(forward,planePoint);
+    this.raycaster.setFromCamera(new Vector2(x*2-1,1-y*2),this.camera);
     const world=new Vector3();if(!this.raycaster.ray.intersectPlane(this.plane,world))return null;
-    world.x=clamp(world.x,-1.35,1.35);world.z=clamp(world.z,-1.35,1.35);
     return {screen:{x,y},interaction:normalized,world};
+  }
+  mapGround(clientX,clientY){
+    const bounds=this.canvas.getBoundingClientRect(),x=(clientX-bounds.left)/bounds.width,y=(clientY-bounds.top)/bounds.height;
+    if(x<0||x>1||y<0||y>1)return null;
+    this.raycaster.setFromCamera(new Vector2(x*2-1,1-y*2),this.camera);
+    const world=new Vector3();if(!this.raycaster.ray.intersectPlane(new Plane(new Vector3(0,1,0),0),world))return null;
+    world.x=clamp(world.x,-1.35,1.35);world.z=clamp(world.z,-1.35,1.35);
+    return {screen:{x,y},world};
   }
 }
 
@@ -25,19 +37,37 @@ export class HoverHeightMapper {
 
 const pointerCopy=p=>({...p,position:p.position.clone(),velocity:p.velocity.clone(),direction:p.direction.clone(),screen:{...p.screen},interaction:{...p.interaction},orientation:{...p.orientation}});
 export class SpatialInputSystem {
-  constructor(canvas,camera){
-    this.canvas=canvas;this.mapper=new CoordinateMapper(canvas,camera);this.heightMapper=new HoverHeightMapper();
+  constructor(canvas,camera,interactionTarget){
+    this.canvas=canvas;this.mapper=new CoordinateMapper(canvas,camera,interactionTarget);this.heightMapper=new HoverHeightMapper();
     this.positionSmoothing=15;this.heightSmoothing=11;this.tiltSmoothing=13;
     this.rawPointer=null;this.filteredPointer=null;this.lastPosition=null;this.lastTime=null;this.acceleration=0;
     this.onChange=null;this.mode='wand';this.lastPenEvent=null;this.poseHistory=new PoseHistory();this.samples=[];this.nativeActive=false;
     this.move=e=>{if(e.pointerType==='pen'&&(this.nativeActive||globalThis.window?.heiheiNativeBridge))return;const coalesced=e.getCoalescedEvents?.();for(const sample of coalesced?.length?coalesced:[e])this.handlePointer(sample);};
+    // A modal settings dialog makes the canvas inert. Keep Pencil diagnostics
+    // live while the user hovers over the visible scene beside that dialog.
+    this.modalPen=e=>{
+      if(e.pointerType!=='pen'||e.target===canvas)return;
+      const dialog=globalThis.document?.querySelector('#settings-dialog[open]');if(!dialog)return;
+      const r=dialog.getBoundingClientRect();
+      if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)return;
+      this.move(e);
+    };
     this.leave=e=>{if(e.pointerType!=='touch'&&!this.nativeActive)this.deactivate();};
     this.native=e=>this.handleNative(e.detail);
     canvas.addEventListener('pointermove',this.move);canvas.addEventListener('pointerdown',this.move);canvas.addEventListener('pointerleave',this.leave);
+    globalThis.document?.addEventListener('pointermove',this.modalPen,true);
+    globalThis.document?.addEventListener('pointerdown',this.modalPen,true);
     globalThis.window?.addEventListener('heihei-pencil',this.native);
   }
   setMode(mode){this.mode=mode;if(mode!=='wand')this.deactivate();}
-  setSimulatedHeight(value){this.heightMapper.simulated=value;if(this.rawPointer&&this.rawPointer.heightSource==='模拟高度'){this.rawPointer.position.y=.24+value;this.filteredPointer.position.y=.24+value;}}
+  setSimulatedHeight(value){
+    this.heightMapper.simulated=value;
+    if(this.rawPointer&&this.rawPointer.heightSource==='模拟高度'){
+      const bounds=this.canvas.getBoundingClientRect();
+      const point=this.mapper.map(bounds.left+this.rawPointer.screen.x*bounds.width,bounds.top+this.rawPointer.screen.y*bounds.height,value);
+      if(point){this.rawPointer.position.copy(point.world);this.filteredPointer.position.copy(point.world);this.lastPosition=point.world.clone();}
+    }
+  }
   handleNative(data){
     if(!data||data.phase==='ended'||data.phase==='cancelled'){this.nativeActive=false;this.deactivate();return;}
     this.nativeActive=true;
@@ -50,10 +80,10 @@ export class SpatialInputSystem {
     // Pointer Events define pen tilt, but have no standardized physical hover distance.
     const physical=Number.isFinite(e.hoverDistance)?e.hoverDistance:null;
     const height=physical===null?this.heightMapper.simulated:this.heightMapper.map(physical);
-    const mapped=this.mapper.map(e.clientX,e.clientY,.24+height);if(!mapped){this.deactivate();return;}
+    const mapped=this.mapper.map(e.clientX,e.clientY,height);if(!mapped){this.deactivate();return;}
     const timestamp=Number.isFinite(e.timeStamp)?e.timeStamp:performance.now();
     const dt=this.lastTime===null?1/60:clamp((timestamp-this.lastTime)/1000,1/240,.15);
-    const position=mapped.world.clone();position.y=.24+height;
+    const position=mapped.world.clone();
     const velocity=this.lastPosition?position.clone().sub(this.lastPosition).divideScalar(dt):new Vector3();
     const pose=readPose(e,this.poseHistory);
     const {altitude,azimuth}=pose;
@@ -79,5 +109,5 @@ export class SpatialInputSystem {
   }
   consumeSamples(){return this.samples.splice(0);}
   deactivate(){if(this.rawPointer)this.rawPointer.active=false;if(this.filteredPointer)this.filteredPointer.active=false;this.samples.length=0;this.lastTime=null;this.lastPosition=null;this._previousFilteredPosition=null;this.onChange?.(this.rawPointer,this.filteredPointer);}
-  dispose(){this.canvas.removeEventListener('pointermove',this.move);this.canvas.removeEventListener('pointerdown',this.move);this.canvas.removeEventListener('pointerleave',this.leave);globalThis.window?.removeEventListener('heihei-pencil',this.native);}
+  dispose(){this.canvas.removeEventListener('pointermove',this.move);this.canvas.removeEventListener('pointerdown',this.move);this.canvas.removeEventListener('pointerleave',this.leave);globalThis.document?.removeEventListener('pointermove',this.modalPen,true);globalThis.document?.removeEventListener('pointerdown',this.modalPen,true);globalThis.window?.removeEventListener('heihei-pencil',this.native);}
 }

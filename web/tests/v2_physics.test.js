@@ -6,11 +6,24 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {PoseHistory,poseDirection,readPose,sphericalFromTilt,smoothDirection} from '../src/v2/pose.js';
 import {createPhysics} from '../src/v2/physics.js';
 import {CatBrain} from '../src/v1/cat_brain.js';
+import {CatController} from '../src/cat_controller.js';
 
 const input=(x=0,y=.5,z=0,direction=new Vector3(0,-1,0))=>({active:true,position:new Vector3(x,y,z),direction});
 function catAt(x=0,y=.16,z=0){
   const root=new Group(),head=new Bone();head.position.set(x,y,z);root.add(head);
   return {root,bones:{head},reactContact(c){this.lastResponse=c;}};
+}
+async function deliveredCat(){
+  globalThis.ProgressEvent??=class{constructor(type,data){this.type=type;Object.assign(this,data);}};
+  const raw=fs.readFileSync(new URL('../public/assets/siamese_cat_quadruped_v10.glb',import.meta.url));
+  const jsonLength=raw.readUInt32LE(12),doc=JSON.parse(raw.subarray(20,20+jsonLength).toString());
+  const offset=20+jsonLength,bin=raw.subarray(offset+8,offset+8+raw.readUInt32LE(offset));
+  doc.buffers[0].uri='data:application/octet-stream;base64,'+bin.toString('base64');
+  delete doc.images;delete doc.textures;delete doc.materials;
+  for(const mesh of doc.meshes)for(const primitive of mesh.primitives)delete primitive.material;
+  const gltf=await new GLTFLoader().parseAsync(JSON.stringify(doc),'');
+  const config=JSON.parse(fs.readFileSync(new URL('../public/assets/cat_asset_config_v10.json',import.meta.url)));
+  return new CatController(gltf,config);
 }
 
 test('Pointer Events tilt converts to camera-facing direction without azimuth wrap',()=>{
@@ -77,6 +90,26 @@ test('fast wand sweep stops before crossing the animated head',async()=>{
   const head=physics.catBodies.find(item=>item.part==='head');
   assert.ok(physics.tipPosition.x<0);
   assert.ok(physics.tipPosition.distanceTo(head.position)>=physics.tipRadius+head.radius-.002);
+});
+
+test('delivered animated rig stays clear of the ball during walks, paws and jump',async()=>{
+  const cat=await deliveredCat(),physics=await createPhysics(cat);
+  const targets=[[-.25,.32,.18],[.25,.32,.18],[0,.32,-.2],[0,.32,.2]];
+  for(const action of ['walk','pawLeft','jump']){
+    cat.play(action);
+    for(let i=0;i<160;i++){
+      cat.update(1/120);
+      const [x,y,z]=targets[Math.floor(i/40)];
+      physics.update(1/120,input(x,y,z));
+      const ball=physics.ballBody.translation();
+      for(const body of physics.catBodies){
+        const distance=Math.hypot(ball.x-body.position.x,ball.y-body.position.y,ball.z-body.position.z);
+        const overlap=body.radius+physics.ballRadius-distance;
+        assert.ok(overlap<.002,`${action} ${body.part} overlap ${overlap}`);
+      }
+    }
+  }
+  cat.dispose();
 });
 
 test('contact cooldown allows a single reaction and preserves committed jump',()=>{

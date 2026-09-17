@@ -19,10 +19,17 @@ test('pointer pipeline retains raw and filtered samples separately, with honest 
  const canvas={addEventListener(){},removeEventListener(){},getBoundingClientRect(){return {left:0,top:0,width:500,height:500};}};
  const camera=new PerspectiveCamera(40,1,.01,10);camera.position.set(1,.7,1);camera.lookAt(0,.24,0);camera.updateMatrixWorld();
  const spatial=new SpatialInputSystem(canvas,camera);spatial.handlePointer({clientX:250,clientY:250,pointerType:'pen',buttons:0,timeStamp:100,altitudeAngle:.7,azimuthAngle:1.2});
- assert.equal(spatial.rawPointer.heightSource,'模拟高度');assert.equal(spatial.rawPointer.position.y,.42);assert.equal(spatial.filteredPointer.active,true);
+ assert.equal(spatial.rawPointer.heightSource,'模拟高度');assert.equal(spatial.filteredPointer.active,true);
+ const center=spatial.rawPointer.position.clone().project(camera);
+ assert.ok(Math.abs(center.x)<1e-6&&Math.abs(center.y)<1e-6,'wand origin must project under the nib');
  spatial.handlePointer({clientX:300,clientY:250,pointerType:'pen',buttons:0,timeStamp:116,altitudeAngle:.8,azimuthAngle:1.3});
+ const shifted=spatial.rawPointer.position.clone().project(camera);
+ assert.ok(Math.abs(shifted.x-.2)<1e-6&&Math.abs(shifted.y)<1e-6);
  assert.notEqual(spatial.rawPointer.position.x,spatial.filteredPointer.position.x);
  assert.notEqual(spatial.rawPointer.position,spatial.filteredPointer.position);
+ spatial.setSimulatedHeight(.3);
+ const raised=spatial.rawPointer.position.clone().project(camera);
+ assert.ok(Math.abs(raised.x-.2)<1e-6&&Math.abs(raised.y)<1e-6,'hover depth must not pull the rod away from the nib');
  assert.equal(spatial.rawPointer.contact,false);spatial.deactivate();assert.equal(spatial.filteredPointer.active,false);
 });
 test('delivered Blender wand has separate rod and woven feather lure; feather keeps moving after stop',async()=>{
