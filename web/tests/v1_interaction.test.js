@@ -32,6 +32,26 @@ test('pointer pipeline retains raw and filtered samples separately, with honest 
  assert.ok(Math.abs(raised.x-.2)<1e-6&&Math.abs(raised.y)<1e-6,'hover depth must not pull the rod away from the nib');
  assert.equal(spatial.rawPointer.contact,false);spatial.deactivate();assert.equal(spatial.filteredPointer.active,false);
 });
+test('native Pencil packet preserves the nib screen position and suppresses duplicate web pen input',()=>{
+ const previousWindow=globalThis.window;
+ globalThis.window={innerWidth:1024,innerHeight:768,addEventListener(){},removeEventListener(){}};
+ try{
+  const canvas={addEventListener(){},removeEventListener(){},getBoundingClientRect(){return {left:0,top:0,width:1024,height:768};}};
+  const camera=new PerspectiveCamera(40,1024/768,.01,10);camera.position.set(1,.7,1);camera.lookAt(0,.24,0);camera.updateMatrixWorld();
+  const spatial=new SpatialInputSystem(canvas,camera);
+  spatial.handleNative({phase:'changed',x:.64,y:.38,altitude:.55,azimuth:1.1,zOffset:.5,distanceSource:'UIKit normalized zOffset',timestamp:1000,contact:false});
+  const projected=spatial.rawPointer.position.clone().project(camera);
+  assert.ok(Math.abs(projected.x-(.64*2-1))<1e-6);
+  assert.ok(Math.abs(projected.y-(1-.38*2))<1e-6);
+  assert.equal(spatial.rawPointer.source,'UIKit WKWebView');
+  assert.equal(spatial.rawPointer.heightSource,'UIKit normalized zOffset');
+  spatial.move({pointerType:'pen',clientX:50,clientY:50});
+  assert.ok(Math.abs(spatial.rawPointer.screen.x-.64)<1e-6);
+  spatial.handleNative({phase:'ended'});
+  assert.equal(spatial.rawPointer.active,false);
+  spatial.dispose();
+ }finally{if(previousWindow===undefined)delete globalThis.window;else globalThis.window=previousWindow;}
+});
 test('delivered Blender wand has separate rod and woven feather lure; feather keeps moving after stop',async()=>{
  globalThis.ProgressEvent??=class{constructor(type,data){this.type=type;Object.assign(this,data);}};
  const bytes=fs.readFileSync(new URL('../public/assets/cat_wand_v2.glb',import.meta.url));
