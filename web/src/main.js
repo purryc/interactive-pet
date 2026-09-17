@@ -30,6 +30,13 @@ const marker=new THREE.Group();const ball=new THREE.Mesh(new THREE.SphereGeometr
 const ring=new THREE.Mesh(new THREE.TorusGeometry(.035,.0018,8,48),new THREE.MeshBasicMaterial({color:0xaa7d47,transparent:true,opacity:.65}));ring.rotation.x=-Math.PI/2;marker.add(ring);
 const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3(0,-.35,0)]),new THREE.LineDashedMaterial({color:0xb99d75,dashSize:.012,gapSize:.01}));line.computeLineDistances();marker.add(line);scene.add(marker);marker.visible=false;
 let cat,input,skeleton,config,mode='wand',demoTime=null,lastDemoEvent=-1,frames=0,statsElapsed=0,lastTime=performance.now(),lastStatus='';
+const frameBins=new Uint32Array(201);let frameCount=0;
+function frameP95(){let seen=0,limit=Math.ceil(frameCount*.95);for(let i=0;i<frameBins.length;i++){seen+=frameBins[i];if(seen>=limit)return i;}return 0;}
+const degrees=r=>r===null||r===undefined?'—':(r*180/Math.PI).toFixed(1)+'°';
+function poseStateText(name,state){
+ const p=state.last;
+ return `${name} ${state.count}次 · 球面 ${degrees(p?.altitude)} / ${degrees(p?.azimuth)} · tilt ${p?.tiltX??'—'} / ${p?.tiltY??'—'} · 变化 ${state.varied?'有':'无'}`;
+}
 let spatial,wand,brain,perception,treat,gestureAdapter,lastPerception=null,lastFeather=null;
 const logger=new InteractionLogger();
 const debugParams={targetX:0,targetZ:.60};
@@ -67,7 +74,7 @@ async function load(){
  input=new InputAdapter(canvas,camera,target=>cat.setTarget(target),(p,run)=>{stopDemo();cat.moveTo(p,run);});
  spatial=new SpatialInputSystem(canvas,camera);window.heiheiLoadStage='initializing physics';wand=await PhysicalCatWand.create(scene,wandGltf,cat);window.heiheiLoadStage='physics ready';brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
  gestureAdapter.onGesture=g=>{if(mode==='treat')treat.handle(g);};
- spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · 姿态 ${raw.orientation.source==='default'?'尚无实测角度':raw.orientation.source} · ${raw.orientation.observedVariation?'角度有变化':'角度未见变化'} · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
+ spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · 姿态 ${raw.orientation.source==='default'?'尚无实测角度':raw.orientation.source} · 当前状态角度${raw.orientation.observedVariation?'有':'未见'}变化 · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
  $('hover-height').addEventListener('input',()=>{const value=Number($('hover-height').value);spatial.setSimulatedHeight(value);$('hover-height-value').value=value.toFixed(2)+' m';});
  v1Range('位置平滑',2,30,1,()=>spatial.positionSmoothing,v=>spatial.positionSmoothing=v);
  v1Range('高度平滑',2,30,1,()=>spatial.heightSmoothing,v=>spatial.heightSmoothing=v);
@@ -121,7 +128,7 @@ async function load(){
  $('stop-demo').addEventListener('click',()=>{stopDemo();cat.look.bodyFollow=$('body-follow').checked;input.setActive(false);cat.play('idle');});
  setMode('wand');$('loading').classList.add('hidden');
  // Read-only-ish diagnostics plus controller access for local acceptance tests.
- window.catLab={cat,input,spatial,wand,physics:wand.physics,treat,gestureAdapter,logger,get brain(){return brain;},scene,renderer,camera,config,setMode,view,play,stopDemo,get demoTime(){return demoTime;},snapshot:()=>({action:cat.animation.current,brain:brain.state,reason:brain.reason,position:cat.root.position.toArray(),feather:lastFeather?.position.toArray(),tip:wand.physics.tipPosition.toArray(),contacts:wand.physics.contacts.map(c=>c.part),pose:spatial.rawPointer?.orientation,source:spatial.rawPointer?.source,yaw:cat.look.yaw,pitch:cat.look.pitch,head:cat.look.head.quaternion.toArray(),triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls})};
+ window.catLab={cat,input,spatial,wand,physics:wand.physics,treat,gestureAdapter,logger,get brain(){return brain;},scene,renderer,camera,config,setMode,view,play,stopDemo,get demoTime(){return demoTime;},snapshot:()=>({action:cat.animation.current,brain:brain.state,reason:brain.reason,position:cat.root.position.toArray(),feather:lastFeather?.position.toArray(),tip:wand.physics.tipPosition.toArray(),contacts:wand.physics.contacts.map(c=>c.part),pose:spatial.rawPointer?.orientation,poseStates:spatial.poseHistory.states,source:spatial.rawPointer?.source,frameP95:frameP95(),frameCount,yaw:cat.look.yaw,pitch:cat.look.pitch,head:cat.look.head.quaternion.toArray(),triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls})};
 }
 const events=[
  [0,()=>{cat.play('idle');input.setActive(false);}],
@@ -153,11 +160,12 @@ function animate(){
   const current=cat.animation.current,combined=`${current}:${brain.state}:${mode}`;if(lastStatus!==combined){lastStatus=combined;$('status').textContent=`● ${labels[current]??current} · ${mode==='wand'||mode==='treat'?stateLabels[brain.state]:'手动模式'}`;document.querySelectorAll('[data-action]').forEach(b=>b.classList.toggle('active',b.dataset.action===current));$('brain-state').textContent=stateLabels[brain.state]??brain.state;$('brain-reason').textContent=brain.reason;}
  }
  orbit.update();renderer.render(scene,camera);frames++;statsElapsed+=raw;
- if(statsElapsed>.6){$('stats').textContent=`${Math.round(frames/statsElapsed)} FPS · ${(statsElapsed/frames*1000).toFixed(1)} ms`;
+ if(raw>0&&raw<.25){frameBins[Math.min(200,Math.round(raw*1000))]++;frameCount++;}
+ if(statsElapsed>.6){$('stats').textContent=`${Math.round(frames/statsElapsed)} FPS · ${(statsElapsed/frames*1000).toFixed(1)} ms · P95 ${frameP95()} ms`;
   if(cat)$('debug-readout').textContent=`${renderer.info.render.triangles.toLocaleString()} 三角面 · ${renderer.info.render.calls} 次绘制 · 32 根骨骼｜目标 ${cat.spatialTarget?.position?.toArray().map(v=>v.toFixed(2)).join(', ')??'未激活'}｜位置 ${cat.root.position.toArray().map(v=>v.toFixed(2)).join(', ')}｜追踪角 ${(cat.look.yaw*180/Math.PI).toFixed(1)}° / ${(cat.look.pitch*180/Math.PI).toFixed(1)}°`;
   if(cat){const rawPointer=spatial.rawPointer,filtered=spatial.filteredPointer,g=gestureAdapter.lastGesture,p=lastPerception;
    $('height-source').textContent=rawPointer?.heightSource??'模拟高度';
-   $('v1-readout').textContent=`输入 ${rawPointer?.source??'等待'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 姿态 ${rawPointer?.orientation.source??'—'} · 倾角 ${rawPointer?(rawPointer.orientation.altitude*180/Math.PI).toFixed(0):'—'}° / ${(rawPointer?.orientation.azimuth*180/Math.PI||0).toFixed(0)}° · 角度变化 ${spatial.poseHistory.varied?'有':'无'} · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s\n球 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 物理 ${wand.physics.steps} 步 · 接触 ${wand.physics.contacts.map(c=>c.part).join(', ')||'无'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
+   $('v1-readout').textContent=`输入 ${rawPointer?.source??'等待'} · ${rawPointer?.contact?'接触':'悬停'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 当前姿态 ${rawPointer?.orientation.source??'—'} · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s\n${poseStateText('悬停',spatial.poseHistory.states.hover)}\n${poseStateText('接触',spatial.poseHistory.states.contact)}\n球 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 物理 ${wand.physics.steps} 步 · 接触 ${wand.physics.contacts.map(c=>c.part).join(', ')||'无'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
   }
   frames=0;statsElapsed=0;
  }
@@ -167,5 +175,5 @@ $('settings-open').addEventListener('click',()=>$('settings-dialog').showModal()
 $('settings-close').addEventListener('click',()=>$('settings-dialog').close());
 $('settings-dialog').addEventListener('click',e=>{const r=$('settings-dialog').getBoundingClientRect();if(e.target===$('settings-dialog')&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))$('settings-dialog').close();});
 $('compare').addEventListener('click',()=>{$('settings-dialog').close();$('comparison').showModal();});
-document.addEventListener('visibilitychange',()=>{lastTime=performance.now();wand?.clearAccumulation();});
+document.addEventListener('visibilitychange',()=>{lastTime=performance.now();wand?.clearAccumulation();if(!document.hidden){frameBins.fill(0);frameCount=0;}});
 load().catch(error=>{$('loading').replaceChildren(document.createTextNode('物理系统或模型加载失败。逗猫棒已暂停。'),Object.assign(document.createElement('button'),{textContent:'重试',onclick:()=>location.reload()}));console.error(error);});animate();

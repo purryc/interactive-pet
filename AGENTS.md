@@ -16,6 +16,7 @@
 - `src/build_wand_v3.py`: rebuild the independently deformable plume assemblies, save `output/cat_wand_v3.blend`, and export `web/public/assets/cat_wand_v3.glb`. Preserve v2.
 - `reference/wand_reference_v1.png`: private visual reference supplied in chat. Keep it locally for reconstruction, but do not publish the product photograph without a rights decision.
 - `qa/`: small verification reports and reviewed screenshots only. Generated caches, local environments and frame sequences stay out of Git.
+- `qa/device/`: locally retained, compressed iPad acceptance recordings; keep raw captures and videos out of Git. Name files by date and tested release.
 
 ## Conventions
 - Keep original file names and version suffixes so links and scripts remain unambiguous.

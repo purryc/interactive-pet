@@ -25,6 +25,12 @@ test('Pointer Events tilt converts to camera-facing direction without azimuth wr
   assert.equal(first.source,'default');assert.equal(first.observedVariation,false);
   const second=readPose({tiltX:30,tiltY:-10},history);
   assert.equal(second.source,'tilt');assert.equal(second.observedVariation,true);
+  assert.equal(history.states.hover.count,2);
+  const contact=readPose({pointerType:'pen',buttons:1,altitudeAngle:Math.PI/2,azimuthAngle:0,tiltX:0,tiltY:0},history);
+  assert.equal(contact.source,'default');assert.equal(contact.observedVariation,false);
+  assert.equal(history.states.contact.count,1);
+  assert.equal(history.states.contact.varied,false);
+  assert.equal(history.states.hover.varied,true);
   camera.position.set(1,0,0);camera.lookAt(0,0,0);camera.updateMatrixWorld();
   assert.ok(poseDirection({altitude:Math.PI/2,azimuth:0},camera).x<-.99);
 });
@@ -61,6 +67,16 @@ test('cat head collision blocks initial overlap and moving contact stays shallow
   const penetration=physics.ballRadius+head.radius-state.position.distanceTo(head.position);
   assert.ok(penetration<.002,`ball-head penetration ${penetration}`);
   assert.ok(physics.steps>=240);
+});
+
+test('fast wand sweep stops before crossing the animated head',async()=>{
+  const physics=await createPhysics(catAt(0,.16,0));
+  const pointer=x=>input(x,.25,0);
+  physics.update(1/120,pointer(-.35));
+  physics.update(1/120,pointer(.35));
+  const head=physics.catBodies.find(item=>item.part==='head');
+  assert.ok(physics.tipPosition.x<0);
+  assert.ok(physics.tipPosition.distanceTo(head.position)>=physics.tipRadius+head.radius-.002);
 });
 
 test('contact cooldown allows a single reaction and preserves committed jump',()=>{

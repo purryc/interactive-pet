@@ -33,7 +33,7 @@ export async function createPhysics(cat){await RAPIER.init();return new WandPhys
 export class WandPhysics{
   constructor(cat){
     this.cat=cat;this.world=new RAPIER.World(V(0,-9.81,0));this.world.timestep=1/120;this.world.numSolverIterations=8;
-    this.stepSize=1/120;this.accumulator=0;this.steps=0;this.active=false;this.contacts=[];
+    this.stepSize=1/120;this.accumulator=0;this.steps=0;this.active=false;this.contacts=[];this.pendingSamples=[];
     this.ropeLength=.24;this.wandLength=.04;this.ballRadius=.036;this.tipRadius=.007;this.tipPosition=new Vector3();
     this.plumeRadii=[.047,.037,.041,.028,.034];
     this.catBodies=[];this.catColliderHandles=new Set();this.catHandleMap=new Map();this.debug=[];
@@ -136,29 +136,30 @@ export class WandPhysics{
     if(this.ballBody)this.world.removeRigidBody(this.ballBody);
     for(const link of this.rope)this.world.removeRigidBody(link.body);
     if(this.tipBody)this.world.removeRigidBody(this.tipBody);
-    this.rope=[];this.tipBody=this.tipCollider=this.ballBody=this.ballCollider=null;this.active=false;this.accumulator=0;this.previousRope=null;
+    this.rope=[];this.tipBody=this.tipCollider=this.ballBody=this.ballCollider=null;this.active=false;this.accumulator=0;this.previousRope=null;this.pendingSamples=[];
   }
   update(dt,pointer,samples=[]){
     if(!pointer?.active){if(this.active)this.removeChain();this.contacts=[];return null;}
+    this.pendingSamples.push(...samples);if(this.pendingSamples.length>128)this.pendingSamples.splice(0,this.pendingSamples.length-128);
+    this.syncCat();
     const desired=pointer.position.clone().addScaledVector(pointer.direction,this.wandLength);
     if(!this.active)this.createChain(desired);
     this.accumulator=Math.min(.05,this.accumulator+Math.max(0,dt));
     const totalSteps=Math.min(8,Math.floor(this.accumulator/this.stepSize));
     let steps=0;
     while(this.accumulator>=this.stepSize&&steps<totalSteps){
-      const sampled=samples.length?samples[Math.max(0,Math.ceil((steps+1)*samples.length/totalSteps)-1)]:null;
+      const sampled=this.pendingSamples.length?this.pendingSamples[Math.max(0,Math.ceil((steps+1)*this.pendingSamples.length/totalSteps)-1)]:null;
       const raw=sampled?.active?sampled:pointer;
       const target=raw.position.clone().addScaledVector(raw.direction,this.wandLength);
       const next=this.safeTip(target);
       this.previousRope=this.currentRopePoints();
       this.tipBody.setNextKinematicTranslation(next);this.tipPosition.copy(next);
-      this.syncCat();
       this.restorePlumes();
       this.world.step();
       this.collectContacts();
       this.accumulator-=this.stepSize;steps++;this.steps++;
     }
-    if(!steps)this.syncCat();
+    if(steps)this.pendingSamples.length=0;
     const position=vec(this.ballBody.translation()),velocity=vec(this.ballBody.linvel());
     return {position,velocity,speed:velocity.length(),heightFromGround:position.y-this.ballRadius,tipPosition:this.tipPosition.clone(),visible:true,steps};
   }

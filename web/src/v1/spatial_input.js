@@ -30,7 +30,7 @@ export class SpatialInputSystem {
     this.positionSmoothing=15;this.heightSmoothing=11;this.tiltSmoothing=13;
     this.rawPointer=null;this.filteredPointer=null;this.lastPosition=null;this.lastTime=null;this.acceleration=0;
     this.onChange=null;this.mode='wand';this.lastPenEvent=null;this.poseHistory=new PoseHistory();this.samples=[];this.nativeActive=false;
-    this.move=e=>{if(e.pointerType==='pen'&&(this.nativeActive||globalThis.window?.heiheiNativeBridge))return;for(const sample of e.getCoalescedEvents?.()??[e])this.handlePointer(sample);};
+    this.move=e=>{if(e.pointerType==='pen'&&(this.nativeActive||globalThis.window?.heiheiNativeBridge))return;const coalesced=e.getCoalescedEvents?.();for(const sample of coalesced?.length?coalesced:[e])this.handlePointer(sample);};
     this.leave=e=>{if(e.pointerType!=='touch'&&!this.nativeActive)this.deactivate();};
     this.native=e=>this.handleNative(e.detail);
     canvas.addEventListener('pointermove',this.move);canvas.addEventListener('pointerdown',this.move);canvas.addEventListener('pointerleave',this.leave);
@@ -47,10 +47,10 @@ export class SpatialInputSystem {
   }
   handlePointer(e){
     if(this.mode!=='wand'||e.pointerType==='touch'&&e.isPrimary===false)return;
-    const mapped=this.mapper.map(e.clientX,e.clientY,.24);if(!mapped){this.deactivate();return;}
     // Pointer Events define pen tilt, but have no standardized physical hover distance.
     const physical=Number.isFinite(e.hoverDistance)?e.hoverDistance:null;
     const height=physical===null?this.heightMapper.simulated:this.heightMapper.map(physical);
+    const mapped=this.mapper.map(e.clientX,e.clientY,.24+height);if(!mapped){this.deactivate();return;}
     const timestamp=Number.isFinite(e.timeStamp)?e.timeStamp:performance.now();
     const dt=this.lastTime===null?1/60:clamp((timestamp-this.lastTime)/1000,1/240,.15);
     const position=mapped.world.clone();position.y=.24+height;
