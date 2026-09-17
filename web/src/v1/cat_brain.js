@@ -13,7 +13,16 @@ export class CatBrain {
     this.cat=cat;this.state='IDLE';this.reason='等待羽毛';this.nextAction='—';this.time=0;this.stateTime=0;
     this.reactionDelay=.25;this.recoveryTime=.68;this.pawReach=.34;this.jumpReach=.86;this.chaseSpeed=.16;
     this.lastAction=null;this.lastActionTime=-10;this.lastActionPosition=null;this.jumpTarget=null;this.missed=false;
-    this.interest=.5;this.energy=1;this.failedAttempts=0;this._moveTime=0;
+    this.interest=.5;this.energy=1;this.failedAttempts=0;this._moveTime=0;this.contactCooldown=new Map();this.lastContact=null;
+  }
+  onContact(contact){
+    if(!contact||['CROUCH','JUMP','LAND'].includes(this.state))return false;
+    const last=this.contactCooldown.get(contact.part)??-Infinity;
+    if(this.time-last<.7)return false;
+    this.contactCooldown.set(contact.part,this.time);this.lastContact=contact;
+    this.cat.reactContact?.(contact);
+    this.reason=contact.part.startsWith('frontPaw')?'前爪拨开绳球':contact.part==='head'||contact.part==='muzzle'?'轻触后缩头':'感觉到逗猫棒';
+    return true;
   }
   enter(state,reason){this.state=state;this.stateTime=0;this.reason=reason;}
   finishAction(perception){

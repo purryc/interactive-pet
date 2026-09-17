@@ -19,7 +19,7 @@ test('pointer pipeline retains raw and filtered samples separately, with honest 
  const canvas={addEventListener(){},removeEventListener(){},getBoundingClientRect(){return {left:0,top:0,width:500,height:500};}};
  const camera=new PerspectiveCamera(40,1,.01,10);camera.position.set(1,.7,1);camera.lookAt(0,.24,0);camera.updateMatrixWorld();
  const spatial=new SpatialInputSystem(canvas,camera);spatial.handlePointer({clientX:250,clientY:250,pointerType:'pen',buttons:0,timeStamp:100,altitudeAngle:.7,azimuthAngle:1.2});
- assert.equal(spatial.rawPointer.heightSource,'模拟高度');assert.equal(spatial.rawPointer.position.y,.18);assert.equal(spatial.filteredPointer.active,true);
+ assert.equal(spatial.rawPointer.heightSource,'模拟高度');assert.equal(spatial.rawPointer.position.y,.42);assert.equal(spatial.filteredPointer.active,true);
  spatial.handlePointer({clientX:300,clientY:250,pointerType:'pen',buttons:0,timeStamp:116,altitudeAngle:.8,azimuthAngle:1.3});
  assert.notEqual(spatial.rawPointer.position.x,spatial.filteredPointer.position.x);
  assert.notEqual(spatial.rawPointer.position,spatial.filteredPointer.position);

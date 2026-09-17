@@ -6,7 +6,7 @@ import {CatController} from './cat_controller.js';
 import {InputAdapter} from './input_adapter.js';
 import {recordDemo} from './record_demo.js';
 import {SpatialInputSystem} from './v1/spatial_input.js';
-import {CatWandController} from './v1/wand.js';
+import {PhysicalCatWand} from './v2/wand.js';
 import {CatBrain,CatPerceptionSystem} from './v1/cat_brain.js';
 import {TreatController,TwoFingerTouchAdapter} from './v1/treat.js';
 import {InteractionLogger} from './v1/logger.js';
@@ -61,13 +61,13 @@ async function load(){
  const response=await fetch(configUrl);if(!response.ok)throw new Error('模型配置加载失败');config=await response.json();
  config.modelUrl=new URL(config.modelUrl,configUrl).href;
  const loader=new GLTFLoader();
- const [gltf,wandGltf]=await Promise.all([loader.loadAsync(config.modelUrl),loader.loadAsync(new URL('assets/cat_wand_v2.glb',assetBase).href)]);
+ const [gltf,wandGltf]=await Promise.all([loader.loadAsync(config.modelUrl),loader.loadAsync(new URL('assets/cat_wand_v3.glb',assetBase).href)]);
  cat=new CatController(gltf,config);scene.add(cat.root);
  skeleton=new THREE.SkeletonHelper(cat.model);skeleton.visible=false;skeleton.material.depthTest=false;skeleton.renderOrder=10;scene.add(skeleton);
  input=new InputAdapter(canvas,camera,target=>cat.setTarget(target),(p,run)=>{stopDemo();cat.moveTo(p,run);});
- spatial=new SpatialInputSystem(canvas,camera);wand=new CatWandController(scene,wandGltf);brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
+ spatial=new SpatialInputSystem(canvas,camera);window.heiheiLoadStage='initializing physics';wand=await PhysicalCatWand.create(scene,wandGltf,cat);window.heiheiLoadStage='physics ready';brain=new CatBrain(cat);perception=new CatPerceptionSystem();treat=new TreatController(scene);gestureAdapter=new TwoFingerTouchAdapter(canvas,spatial.mapper);
  gestureAdapter.onGesture=g=>{if(mode==='treat')treat.handle(g);};
- spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`已收到 Apple Pencil ${raw.contact?'接触':'悬停'}事件；位置与倾角来自设备，高度：${raw.heightSource}。`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；高度由滑块模拟。';};
+ spatial.onChange=(raw)=>{if(raw?.type==='pen')$('input-capability').textContent=`${raw.source} · ${raw.contact?'接触':'悬停'} · 姿态 ${raw.orientation.source==='default'?'尚无实测角度':raw.orientation.source} · ${raw.orientation.observedVariation?'角度有变化':'角度未见变化'} · 高度 ${raw.heightSource}`;else if(raw)$('input-capability').textContent='当前使用鼠标或触控调试；角度与高度未视作 Pencil 实测值。';};
  $('hover-height').addEventListener('input',()=>{const value=Number($('hover-height').value);spatial.setSimulatedHeight(value);$('hover-height-value').value=value.toFixed(2)+' m';});
  v1Range('位置平滑',2,30,1,()=>spatial.positionSmoothing,v=>spatial.positionSmoothing=v);
  v1Range('高度平滑',2,30,1,()=>spatial.heightSmoothing,v=>spatial.heightSmoothing=v);
@@ -75,13 +75,8 @@ async function load(){
  v1Range('高度标定最小值',0,.9,.01,()=>spatial.heightMapper.min,v=>spatial.heightMapper.min=v);
  v1Range('高度标定最大值',.1,2,.01,()=>spatial.heightMapper.max,v=>spatial.heightMapper.max=v);
  v1Range('虚拟高度比例',.1,1,.01,()=>spatial.heightMapper.virtualScale,v=>spatial.heightMapper.virtualScale=v,' m');
- v1Range('逗猫棒长度',.2,.7,.01,()=>wand.wandLength,v=>wand.wandLength=v,' m');
- v1Range('绳长',.1,.45,.01,()=>wand.feather.stringLength,v=>wand.feather.stringLength=v,' m');
- v1Range('逗猫棒位置响应',2,30,1,()=>wand.positionDamping,v=>wand.positionDamping=v);
- v1Range('逗猫棒转向响应',2,30,1,()=>wand.rotationDamping,v=>wand.rotationDamping=v);
- v1Range('羽毛重力',.5,6,.1,()=>wand.feather.gravity,v=>wand.feather.gravity=v);
- v1Range('羽毛阻尼',.3,6,.1,()=>wand.feather.damping,v=>wand.feather.damping=v);
- v1Range('羽毛摆动强度',5,60,1,()=>wand.feather.swingStrength,v=>wand.feather.swingStrength=v);
+ v1Range('虚拟棒头长度',.02,.1,.005,()=>wand.wandLength,v=>wand.wandLength=v,' m');
+ v1Range('绳长',.16,.4,.005,()=>wand.feather.stringLength,v=>wand.feather.stringLength=v,' m');
  v1Range('反应延迟',.1,.4,.01,()=>brain.reactionDelay,v=>brain.reactionDelay=v,' s');
  v1Range('恢复时间',.3,1,.01,()=>brain.recoveryTime,v=>brain.recoveryTime=v,' s');
  v1Range('前爪可及距离',.2,.5,.01,()=>brain.pawReach,v=>brain.pawReach=v,' m');
@@ -115,6 +110,7 @@ async function load(){
  $('look-enabled').addEventListener('change',()=>cat.look.enabled=$('look-enabled').checked);
  $('body-follow').addEventListener('change',()=>cat.look.bodyFollow=$('body-follow').checked);
  $('show-skeleton').addEventListener('change',()=>skeleton.visible=$('show-skeleton').checked);
+ $('show-colliders').addEventListener('change',()=>wand.showColliders=$('show-colliders').checked);
  $('show-ground').addEventListener('change',()=>{ground.visible=grid.visible=$('show-ground').checked;});
  $('orbit-enabled').addEventListener('change',()=>orbit.enabled=mode==='orbit'&&$('orbit-enabled').checked);
  $('home-view').addEventListener('click',()=>{stopDemo();cat.reset();input.setActive(false);spatial.deactivate();treat.reset();brain=new CatBrain(cat);view('hero');setMode('wand');$('settings-dialog').close();});
@@ -125,7 +121,7 @@ async function load(){
  $('stop-demo').addEventListener('click',()=>{stopDemo();cat.look.bodyFollow=$('body-follow').checked;input.setActive(false);cat.play('idle');});
  setMode('wand');$('loading').classList.add('hidden');
  // Read-only-ish diagnostics plus controller access for local acceptance tests.
- window.catLab={cat,input,spatial,wand,treat,gestureAdapter,logger,get brain(){return brain;},scene,renderer,camera,config,setMode,view,play,stopDemo,get demoTime(){return demoTime;},snapshot:()=>({action:cat.animation.current,brain:brain.state,reason:brain.reason,position:cat.root.position.toArray(),feather:lastFeather?.position.toArray(),yaw:cat.look.yaw,pitch:cat.look.pitch,head:cat.look.head.quaternion.toArray(),triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls})};
+ window.catLab={cat,input,spatial,wand,physics:wand.physics,treat,gestureAdapter,logger,get brain(){return brain;},scene,renderer,camera,config,setMode,view,play,stopDemo,get demoTime(){return demoTime;},snapshot:()=>({action:cat.animation.current,brain:brain.state,reason:brain.reason,position:cat.root.position.toArray(),feather:lastFeather?.position.toArray(),tip:wand.physics.tipPosition.toArray(),contacts:wand.physics.contacts.map(c=>c.part),pose:spatial.rawPointer?.orientation,source:spatial.rawPointer?.source,yaw:cat.look.yaw,pitch:cat.look.pitch,head:cat.look.head.quaternion.toArray(),triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls})};
 }
 const events=[
  [0,()=>{cat.play('idle');input.setActive(false);}],
@@ -138,14 +134,16 @@ const events=[
 ];
 function animate(){
  requestAnimationFrame(animate);const now=performance.now(),raw=(now-lastTime)/1000,dt=Math.min(raw,demoTime!==null?.25:.05);lastTime=now;
- if(cat){
+ if(cat&&brain&&perception&&wand){
   if(demoTime!==null){demoTime+=raw;events.forEach(([at,fn],i)=>{if(demoTime>=at&&i>lastDemoEvent){lastDemoEvent=i;fn();}});if(demoTime>=15){stopDemo();cat.look.bodyFollow=$('body-follow').checked;}}
   if(mode==='wand'&&demoTime===null){
-   lastFeather=wand.update(dt,spatial.filteredPointer);lastPerception=perception.perceive(lastFeather?{...lastFeather,kind:'feather'}:null,cat);brain.update(dt,lastPerception);
+   lastPerception=perception.perceive(lastFeather?{...lastFeather,kind:'feather'}:null,cat);brain.update(dt,lastPerception);
   }else if(mode==='treat'&&demoTime===null){
-   wand.update(dt,null);const target=treat.update(dt);lastFeather=null;lastPerception=perception.perceive(target,cat);brain.update(dt,lastPerception);
-  }else wand.update(dt,null);
+   const target=treat.update(dt);lastFeather=null;lastPerception=perception.perceive(target,cat);brain.update(dt,lastPerception);
+  }
   cat.update(dt);
+  if(mode==='wand'&&demoTime===null){lastFeather=wand.update(dt,spatial.filteredPointer,spatial.consumeSamples());for(const contact of wand.physics.contacts)brain.onContact(contact);}
+  else wand.update(dt,null);
   if((mode==='wand'||mode==='treat')&&demoTime===null)logger.record(dt,{raw:spatial.rawPointer,filtered:spatial.filteredPointer,feather:lastFeather,cat,brain,perception:lastPerception,gesture:gestureAdapter.lastGesture});
   const focus=cat.root.position.clone().add(new THREE.Vector3(0,.24,0));
   const cameraShift=focus.sub(orbit.target).multiplyScalar(1-Math.exp(-5*dt));
@@ -159,7 +157,7 @@ function animate(){
   if(cat)$('debug-readout').textContent=`${renderer.info.render.triangles.toLocaleString()} 三角面 · ${renderer.info.render.calls} 次绘制 · 32 根骨骼｜目标 ${cat.spatialTarget?.position?.toArray().map(v=>v.toFixed(2)).join(', ')??'未激活'}｜位置 ${cat.root.position.toArray().map(v=>v.toFixed(2)).join(', ')}｜追踪角 ${(cat.look.yaw*180/Math.PI).toFixed(1)}° / ${(cat.look.pitch*180/Math.PI).toFixed(1)}°`;
   if(cat){const rawPointer=spatial.rawPointer,filtered=spatial.filteredPointer,g=gestureAdapter.lastGesture,p=lastPerception;
    $('height-source').textContent=rawPointer?.heightSource??'模拟高度';
-   $('v1-readout').textContent=`输入 ${rawPointer?.type??'等待'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 倾角 ${rawPointer?(rawPointer.orientation.altitude*180/Math.PI).toFixed(0):'—'}° · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s · 加速度 ${spatial.acceleration.toFixed(2)} m/s²\n羽毛 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m · 高度 ${p?.targetHeight.toFixed(2)??'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 兴趣 ${brain.interest.toFixed(2)} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
+   $('v1-readout').textContent=`输入 ${rawPointer?.source??'等待'} · 原始 ${rawPointer?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 平滑 ${filtered?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 姿态 ${rawPointer?.orientation.source??'—'} · 倾角 ${rawPointer?(rawPointer.orientation.altitude*180/Math.PI).toFixed(0):'—'}° / ${(rawPointer?.orientation.azimuth*180/Math.PI||0).toFixed(0)}° · 角度变化 ${spatial.poseHistory.varied?'有':'无'} · 速度 ${rawPointer?.speed.toFixed(2)??'—'} m/s\n球 ${lastFeather?.position.toArray().map(v=>v.toFixed(2)).join(' / ')??'—'} · 物理 ${wand.physics.steps} 步 · 接触 ${wand.physics.contacts.map(c=>c.part).join(', ')||'无'} · 距离 ${Number.isFinite(p?.targetDistance)?p.targetDistance.toFixed(2):'—'} m\n猫 ${brain.state} · ${brain.reason} · 下一步 ${brain.nextAction} · 双指 ${g.fingerCount??0} / ${g.state} / ${g.distance.toFixed(0)} px`;
   }
   frames=0;statsElapsed=0;
  }
@@ -169,4 +167,5 @@ $('settings-open').addEventListener('click',()=>$('settings-dialog').showModal()
 $('settings-close').addEventListener('click',()=>$('settings-dialog').close());
 $('settings-dialog').addEventListener('click',e=>{const r=$('settings-dialog').getBoundingClientRect();if(e.target===$('settings-dialog')&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))$('settings-dialog').close();});
 $('compare').addEventListener('click',()=>{$('settings-dialog').close();$('comparison').showModal();});
-load().catch(error=>{$('loading').textContent='加载失败，请刷新重试。'+error.message;console.error(error);});animate();
+document.addEventListener('visibilitychange',()=>{lastTime=performance.now();wand?.clearAccumulation();});
+load().catch(error=>{$('loading').replaceChildren(document.createTextNode('物理系统或模型加载失败。逗猫棒已暂停。'),Object.assign(document.createElement('button'),{textContent:'重试',onclick:()=>location.reload()}));console.error(error);});animate();
