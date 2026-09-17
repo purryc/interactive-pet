@@ -9,6 +9,7 @@
 - `src/`: Blender and Python scripts needed to rebuild or validate v10.
 - `output/`: editable current Blender asset, GLB, mapping, preview and selected stills; v6 is the local reconstruction input.
 - `web/`: Vite application and tests; `web/public/assets/` is the runtime copy of the reviewed GLB and mapping.
+- `web/src/v1/`: V1 spatial input, virtual wand and feather, cat perception/decision, two-finger treat, and local CSV logging. Keep browser events at the input boundary; the cat reacts to perceived objects.
 - `qa/`: small verification reports and reviewed screenshots only. Generated caches, local environments and frame sequences stay out of Git.
 
 ## Conventions
@@ -17,3 +18,4 @@
 - Commit no credentials, local virtual environments, `node_modules`, build caches, large ZIP archives or render frame sequences.
 - Run model integrity checks, `npm test`, `npm run build`, and inspect the deployed page before calling the publication complete.
 - Do not add an open source license for user artwork or generated model without an explicit rights decision.
+- V1 uses Pointer Events for pen XY/tilt. A browser must not claim physical hover distance unless it exposes an actual distance field; label any height slider as a simulation. Preserve raw and filtered samples separately and keep exported research logs local to the user.

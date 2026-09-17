@@ -16,7 +16,7 @@ export class InputAdapter {
   setHeight(height){this.height=height;this.target.position.y=height;this.target.velocity.set(0,0,0);this.onTarget(this.target);}
   setPosition(position,type='debug'){this.target.position.copy(position);this.target.velocity.set(0,0,0);this.target.type=type;this.target.active=true;this.onTarget(this.target);}
   pointer(e){
-    if(this.mode==='orbit')return;
+    if(this.mode!=='look'&&this.mode!=='move')return;
     const rect=this.canvas.getBoundingClientRect();this.ray.setFromCamera(new Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),this.camera);
     const p=new Vector3();if(!this.ray.ray.intersectPlane(this.ground,p))return;
     p.x=Math.max(-1.7,Math.min(1.7,p.x));p.z=Math.max(-1.7,Math.min(1.7,p.z));p.y=this.height;
