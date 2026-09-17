@@ -53,7 +53,9 @@ final class HoverViewController: UIViewController, UIGestureRecognizerDelegate, 
         touch.delaysTouchesEnded = false
         touch.delegate = self
         webView.addGestureRecognizer(touch)
-        webView.load(URLRequest(url: URL(string: "https://purryc.github.io/interactive-pet/")!))
+        var page = URLComponents(string: "https://purryc.github.io/interactive-pet/")!
+        page.queryItems = [URLQueryItem(name: "native_reload", value: String(Int(Date().timeIntervalSince1970)))]
+        webView.load(URLRequest(url: page.url!, cachePolicy: .reloadIgnoringLocalCacheData))
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
