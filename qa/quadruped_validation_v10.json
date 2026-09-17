@@ -1,0 +1,101 @@
+{
+  "errors": [],
+  "clips": {
+    "CAT_IDLE": {
+      "seconds": 3.0,
+      "loop": true,
+      "loopEndpointError": 0.0,
+      "minZ": 0.0029998202808201313,
+      "maxZ": 1.8130861520767212
+    },
+    "CAT_WALK": {
+      "seconds": 1.6666666666666667,
+      "loop": true,
+      "loopEndpointError": 0.0,
+      "minZ": 0.002999880351126194,
+      "maxZ": 1.7765089273452759
+    },
+    "CAT_RUN": {
+      "seconds": 1.0,
+      "loop": true,
+      "loopEndpointError": 0.0,
+      "minZ": 0.0029998738318681717,
+      "maxZ": 1.7949801683425903
+    },
+    "CAT_PAW_L": {
+      "seconds": 1.6666666666666667,
+      "loop": false,
+      "loopEndpointError": 0.0,
+      "minZ": 0.002999834716320038,
+      "maxZ": 1.8001110553741455
+    },
+    "CAT_PAW_R": {
+      "seconds": 1.6666666666666667,
+      "loop": false,
+      "loopEndpointError": 0.0,
+      "minZ": 0.0029998659156262875,
+      "maxZ": 1.8001190423965454
+    },
+    "CAT_CROUCH": {
+      "seconds": 1.0,
+      "loop": false,
+      "loopEndpointError": 0.6224831007421017,
+      "minZ": 0.0029998868703842163,
+      "maxZ": 1.7999998331069946
+    },
+    "CAT_JUMP": {
+      "seconds": 1.3333333333333333,
+      "loop": false,
+      "loopEndpointError": 0.3169131577014923,
+      "minZ": 0.0029998733662068844,
+      "maxZ": 2.2699999809265137
+    },
+    "CAT_LAND": {
+      "seconds": 0.8333333333333334,
+      "loop": false,
+      "loopEndpointError": 0.30556994304060936,
+      "minZ": 0.0029998617246747017,
+      "maxZ": 1.7999998331069946
+    },
+    "CAT_SIT": {
+      "seconds": 2.5,
+      "loop": true,
+      "loopEndpointError": 0.0,
+      "minZ": 0.0029999040998518467,
+      "maxZ": 1.8088195323944092
+    },
+    "CAT_LOOK_AROUND": {
+      "seconds": 2.6666666666666665,
+      "loop": true,
+      "loopEndpointError": 0.0,
+      "minZ": 0.0029999250546097755,
+      "maxZ": 1.8394427299499512
+    },
+    "CAT_SNIFF": {
+      "seconds": 2.0,
+      "loop": false,
+      "loopEndpointError": 0.0,
+      "minZ": 0.002999834716320038,
+      "maxZ": 1.7999998331069946
+    },
+    "CAT_STRETCH": {
+      "seconds": 2.6666666666666665,
+      "loop": false,
+      "loopEndpointError": 0.0,
+      "minZ": 0.002999885007739067,
+      "maxZ": 1.7999998331069946
+    }
+  },
+  "bones": 32,
+  "vertices": 44076,
+  "triangles": 88140,
+  "maxInfluences": 4,
+  "weightErrors": 0,
+  "texturesPacked": true,
+  "boundaries": {
+    "CAT_CROUCH -> CAT_JUMP": 0.0,
+    "CAT_JUMP -> CAT_LAND": 5.755840339499187e-17,
+    "CAT_LAND -> CAT_IDLE": 0.0
+  },
+  "status": "pass"
+}

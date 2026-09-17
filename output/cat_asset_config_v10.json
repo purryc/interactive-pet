@@ -1,0 +1,167 @@
+{
+  "modelUrl": "./siamese_cat_quadruped_v10.glb",
+  "scale": 1,
+  "rotationOffset": [
+    0,
+    0,
+    0
+  ],
+  "coordinateSystem": {
+    "up": [
+      0,
+      1,
+      0
+    ],
+    "forward": [
+      0,
+      0,
+      1
+    ],
+    "unit": "meter",
+    "blenderWorkingToMeters": 0.25
+  },
+  "boneMap": {
+    "root": "root",
+    "pelvis": "pelvis",
+    "spine01": "spine",
+    "spine02": "chest",
+    "neck": "neck",
+    "head": "head",
+    "frontLegL": "front_upper.L",
+    "frontLegR": "front_upper.R",
+    "frontLowerL": "front_lower.L",
+    "frontLowerR": "front_lower.R",
+    "frontPawL": "front_paw.L",
+    "frontPawR": "front_paw.R",
+    "backLegL": "hind_upper.L",
+    "backLegR": "hind_upper.R",
+    "backLowerL": "hind_lower.L",
+    "backLowerR": "hind_lower.R",
+    "backPawL": "hind_paw.L",
+    "backPawR": "hind_paw.R",
+    "tail01": "tail_01",
+    "tail02": "tail_02",
+    "tail03": "tail_03",
+    "tail04": "tail_04",
+    "tail05": "tail_05",
+    "earL": "ear.L",
+    "earR": "ear.R",
+    "eyeL": null,
+    "eyeR": null,
+    "jaw": null,
+    "backAnkleL": "hind_ankle.L",
+    "backAnkleR": "hind_ankle.R"
+  },
+  "reservedGuideBones": {
+    "eyeL": "eye.L",
+    "eyeR": "eye.R",
+    "jaw": "jaw"
+  },
+  "animationMap": {
+    "idle": "CAT_IDLE",
+    "walk": "CAT_WALK",
+    "run": "CAT_RUN",
+    "crouch": "CAT_CROUCH",
+    "pawLeft": "CAT_PAW_L",
+    "pawRight": "CAT_PAW_R",
+    "jump": "CAT_JUMP",
+    "land": "CAT_LAND",
+    "sit": "CAT_SIT",
+    "lookAround": "CAT_LOOK_AROUND",
+    "sniff": "CAT_SNIFF",
+    "stretch": "CAT_STRETCH"
+  },
+  "loop": [
+    "idle",
+    "walk",
+    "run",
+    "sit",
+    "lookAround"
+  ],
+  "oneShot": [
+    "crouch",
+    "pawLeft",
+    "pawRight",
+    "jump",
+    "land",
+    "sniff",
+    "stretch"
+  ],
+  "transitions": {
+    "crouch": {
+      "next": "jump",
+      "clampWhenFinished": true
+    },
+    "jump": {
+      "next": "land",
+      "clampWhenFinished": true
+    },
+    "land": {
+      "next": "idle"
+    },
+    "pawLeft": {
+      "next": "idle"
+    },
+    "pawRight": {
+      "next": "idle"
+    },
+    "sniff": {
+      "next": "idle"
+    },
+    "stretch": {
+      "next": "idle"
+    }
+  },
+  "locomotion": {
+    "inPlace": true,
+    "walkSpeedMetersPerSecond": 0.043421052631578944,
+    "runSpeedMetersPerSecond": 0.14150943396226415,
+    "rootMotionXZ": false
+  },
+  "look": {
+    "neckWeight": 0.4,
+    "headWeight": 0.6,
+    "headYawDegrees": 55,
+    "neckYawDegrees": 25,
+    "pitchUpDegrees": 35,
+    "pitchDownDegrees": 25,
+    "note": "Apply after AnimationMixer update relative to current animation pose. Eyes are texture, not independent gaze.",
+    "neckForwardLocal": [
+      0.0,
+      0.975132942199707,
+      0.22162090241909027
+    ],
+    "headForwardLocal": [
+      0.0,
+      0.0,
+      1.0000001192092896
+    ]
+  },
+  "capabilities": {
+    "quadruped": true,
+    "headNeckTrackingBones": true,
+    "independentEyes": false,
+    "mouthAnimation": false,
+    "blinkMorph": false,
+    "runtimeIKRequired": false,
+    "furSimulation": false
+  },
+  "skin": {
+    "maxInfluences": 4,
+    "trimmedVertexCount": 0
+  },
+  "clipNames": [
+    "CAT_CROUCH",
+    "CAT_IDLE",
+    "CAT_JUMP",
+    "CAT_LAND",
+    "CAT_LOOK_AROUND",
+    "CAT_PAW_L",
+    "CAT_PAW_R",
+    "CAT_RUN",
+    "CAT_SIT",
+    "CAT_SNIFF",
+    "CAT_STRETCH",
+    "CAT_WALK"
+  ]
+}

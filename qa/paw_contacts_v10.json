@@ -1,0 +1,110 @@
+{
+  "CAT_IDLE": {
+    "sampledSupportingPaws": 292,
+    "contactZRange": [
+      0.0029998202808201313,
+      0.005600776057690382
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_WALK": {
+    "sampledSupportingPaws": 128,
+    "contactZRange": [
+      0.002999880351126194,
+      0.003000164870172739
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_RUN": {
+    "sampledSupportingPaws": 56,
+    "contactZRange": [
+      0.0029998738318681717,
+      0.009161204099655151
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_PAW_L": {
+    "sampledSupportingPaws": 125,
+    "contactZRange": [
+      0.002999834716320038,
+      0.003000095020979643
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_PAW_R": {
+    "sampledSupportingPaws": 125,
+    "contactZRange": [
+      0.0029998659156262875,
+      0.0030000219121575356
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_CROUCH": {
+    "sampledSupportingPaws": 100,
+    "contactZRange": [
+      0.0029998868703842163,
+      0.0030000782571733
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_JUMP": {
+    "sampledSupportingPaws": 32,
+    "contactZRange": [
+      0.0029998733662068844,
+      0.0030000777915120125
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_LAND": {
+    "sampledSupportingPaws": 84,
+    "contactZRange": [
+      0.0029998617246747017,
+      0.0030001122504472733
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_SIT": {
+    "sampledSupportingPaws": 244,
+    "contactZRange": [
+      0.0029999040998518467,
+      0.003000139258801937
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_LOOK_AROUND": {
+    "sampledSupportingPaws": 260,
+    "contactZRange": [
+      0.0029999250546097755,
+      0.0029999399557709694
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_SNIFF": {
+    "sampledSupportingPaws": 196,
+    "contactZRange": [
+      0.002999834716320038,
+      0.003000101074576378
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  },
+  "CAT_STRETCH": {
+    "sampledSupportingPaws": 260,
+    "contactZRange": [
+      0.002999885007739067,
+      0.0030001653358340263
+    ],
+    "badContacts": [],
+    "badContactCount": 0
+  }
+}

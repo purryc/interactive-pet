@@ -1,0 +1,21 @@
+{
+  "animations": [
+    "CAT_CROUCH",
+    "CAT_IDLE",
+    "CAT_JUMP",
+    "CAT_LAND",
+    "CAT_LOOK_AROUND",
+    "CAT_PAW_L",
+    "CAT_PAW_R",
+    "CAT_RUN",
+    "CAT_SIT",
+    "CAT_SNIFF",
+    "CAT_STRETCH",
+    "CAT_WALK"
+  ],
+  "skins": 1,
+  "joints": 32,
+  "bytes": 10626936,
+  "maxInfluences": 4,
+  "trimmedVertexCount": 0
+}

@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+web/node_modules/
+web/dist/
+qa/.venv_sculpt/
+qa/quadruped_frames_*/
+qa/*.log
+qa/*.npz
+qa/*.blend
+qa/*.blend1
+output/*.blend1
+output/*.zip
+*.pyc
+__pycache__/
