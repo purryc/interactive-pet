@@ -5,6 +5,7 @@
 - Preserve the original working project at `../siamese_cat/`; this directory is a reviewed publication copy.
 
 ## Structure
+- `PRD.md`: current product and interaction specification. Separate implemented behavior, automated evidence, device evidence, and pending acceptance; update it whenever the interaction or physics rules change.
 - `reference/`: selected user-authored character and quadruped action references, plus provenance notes.
 - `src/`: Blender and Python scripts needed to rebuild or validate v10.
 - `output/`: editable current Blender asset, GLB, mapping, preview and selected stills; v6 is the local reconstruction input.
