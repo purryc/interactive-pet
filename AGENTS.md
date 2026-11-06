@@ -4,7 +4,18 @@
 - Publish the current quadruped Siamese cat and its interactive Three.js V0 as an independent GitHub repository named `interactive-pet`.
 - Preserve the original working project at `../siamese_cat/`; this directory is a reviewed publication copy.
 
+## Handoff and retirement
+- `HANDOFF.md`: authoritative restoration, architecture, interaction, assets, QA and known-limitations guide.
+- `qa/backup_verification_2026_11_06.md`: cloud backup and retirement evidence; separate verified facts from pending steps.
+- Backup pushes must not deploy the site. GitHub Pages is manual via workflow_dispatch.
+- Full historical/private assets are preserved in the private `purryc/interactive-pet-archive` release.
+- The user explicitly authorized GitHub backup, Notion handoff and removal of local project copies on 2026-11-06; perform local deletion only after cloud verification.
+
 ## Structure
+- `web/src/play_selector.js`: race-safe play mode switching; keep previous async loads from overriding the latest choice. `web/src/v2/play_mode.js` wraps the retained wand gameplay.
+- `web/src/feeding/`: current freeze-dried feeding input, props, behavior and local telemetry. Hover targets the bag; contact throws one treat; food can be eaten only when hover and contact have ended. The lower-left selector switches between feeding and the lazily loaded v2 wand runtime. Only the selected input and behavior system may run.
+- `src/build_treats_v1.py`: reproducible Blender bag and paw-treat build. Save editable source in `output/cat_treats_v1.blend`, runtime asset in `web/public/assets/cat_treats_v1.glb`, and previews/reports under `qa/web/`. Keep reference images private unless publication is explicitly authorized.
+- `PRD_wand_v2.md`: archived wand-era product/physics specification.
 - `PRD.md`: current product and interaction specification. Separate implemented behavior, automated evidence, device evidence, and pending acceptance; update it whenever the interaction or physics rules change.
 - `reference/`: selected user-authored character and quadruped action references, plus provenance notes.
 - `src/`: Blender and Python scripts needed to rebuild or validate v10.

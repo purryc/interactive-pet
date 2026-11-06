@@ -17,3 +17,7 @@ output/*.zip
 reference/wand_reference_v1.png
 *.pyc
 __pycache__/
+
+.playwright-cli/
+qa/device/*.webm
+reference/treat_reference_v1.png

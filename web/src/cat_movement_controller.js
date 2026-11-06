@@ -17,6 +17,6 @@ export class CatMovementController {
     this.root.position.add(new Vector3(Math.sin(this.root.rotation.y),0,Math.cos(this.root.rotation.y)).multiplyScalar(step));
     const key=this.running?'run':'walk';this.animation.play(key);
     const baseline=this.config.locomotion[this.running?'runSpeedMetersPerSecond':'walkSpeedMetersPerSecond'];
-    this.animation.actions[key].setEffectiveTimeScale(Math.max(.02,this.speed/baseline));return true;
+    this.animation.actions[key].setEffectiveTimeScale(Math.min(this.maxAnimationSpeed??Infinity,Math.max(.02,this.speed/baseline)));return true;
   }
 }

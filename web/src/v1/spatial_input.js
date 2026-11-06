@@ -37,7 +37,8 @@ export class HoverHeightMapper {
 
 const pointerCopy=p=>({...p,position:p.position.clone(),velocity:p.velocity.clone(),direction:p.direction.clone(),screen:{...p.screen},interaction:{...p.interaction},orientation:{...p.orientation}});
 export class SpatialInputSystem {
-  constructor(canvas,camera,interactionTarget){
+  constructor(canvas,camera,interactionTarget,{isBlocked=()=>false}={}){
+    this.isBlocked=isBlocked;
     this.canvas=canvas;this.mapper=new CoordinateMapper(canvas,camera,interactionTarget);this.heightMapper=new HoverHeightMapper();
     this.positionSmoothing=15;this.heightSmoothing=11;this.tiltSmoothing=13;
     this.rawPointer=null;this.filteredPointer=null;this.lastPosition=null;this.lastTime=null;this.acceleration=0;
@@ -55,6 +56,8 @@ export class SpatialInputSystem {
     };
     this.leave=e=>{if(e.pointerType!=='touch'&&!this.nativeActive)this.deactivate();};
     this.native=e=>this.handleNative(e.detail);
+    this.endTouch=e=>{if(e.pointerType==='touch')this.deactivate();};this.cancel=()=>this.deactivate();
+    canvas.addEventListener('pointerup',this.endTouch);canvas.addEventListener('pointercancel',this.cancel);globalThis.window?.addEventListener('blur',this.cancel);
     canvas.addEventListener('pointermove',this.move);canvas.addEventListener('pointerdown',this.move);canvas.addEventListener('pointerleave',this.leave);
     globalThis.document?.addEventListener('pointermove',this.modalPen,true);
     globalThis.document?.addEventListener('pointerdown',this.modalPen,true);
@@ -70,7 +73,7 @@ export class SpatialInputSystem {
     }
   }
   handleNative(data){
-    if(!data)return;
+    if(!data||this.mode!=='wand')return;
     const ended=data.phase==='ended'||data.phase==='cancelled';
     if(!data.channel&&ended){this.nativeHover=this.nativeContact=null;this.nativeActive=false;this.deactivate();return;}
     const channel=data.channel??(data.contact?'contact':'hover');
@@ -87,6 +90,7 @@ export class SpatialInputSystem {
       hoverDistance:active.zOffset,hoverDistanceSource:active.distanceSource??'UIKit normalized zOffset',native:true});
   }
   handlePointer(e){
+    if(this.isBlocked(e.clientX,e.clientY)){this.deactivate();return;}
     if(this.mode!=='wand'||e.pointerType==='touch'&&e.isPrimary===false)return;
     // Pointer Events define pen tilt, but have no standardized physical hover distance.
     const physical=Number.isFinite(e.hoverDistance)?e.hoverDistance:null;
@@ -126,5 +130,5 @@ export class SpatialInputSystem {
   }
   consumeSamples(){return this.samples.splice(0);}
   deactivate(){if(this.rawPointer)this.rawPointer.active=false;if(this.filteredPointer)this.filteredPointer.active=false;this.samples.length=0;this.lastTime=null;this.lastPosition=null;this._previousFilteredPosition=null;this.lastMeasuredPose=null;this.onChange?.(this.rawPointer,this.filteredPointer);}
-  dispose(){this.canvas.removeEventListener('pointermove',this.move);this.canvas.removeEventListener('pointerdown',this.move);this.canvas.removeEventListener('pointerleave',this.leave);globalThis.document?.removeEventListener('pointermove',this.modalPen,true);globalThis.document?.removeEventListener('pointerdown',this.modalPen,true);globalThis.window?.removeEventListener('heihei-pencil',this.native);}
+  dispose(){this.canvas.removeEventListener('pointerup',this.endTouch);this.canvas.removeEventListener('pointercancel',this.cancel);globalThis.window?.removeEventListener('blur',this.cancel);this.canvas.removeEventListener('pointermove',this.move);this.canvas.removeEventListener('pointerdown',this.move);this.canvas.removeEventListener('pointerleave',this.leave);globalThis.document?.removeEventListener('pointermove',this.modalPen,true);globalThis.document?.removeEventListener('pointerdown',this.modalPen,true);globalThis.window?.removeEventListener('heihei-pencil',this.native);}
 }
