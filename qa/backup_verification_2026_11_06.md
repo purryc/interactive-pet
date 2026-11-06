@@ -30,6 +30,6 @@
 - 可部署网页 ZIP：https://github.com/purryc/interactive-pet/releases/tag/handoff-2026-11-06 。
 - Notion 交接手册：https://app.notion.com/p/410194db24c381cab622d92ab5da91ec 。
 - 上述 7 个本机目录/文件已删除，共 13810 个文件（含缓存），逻辑大小约 4.97 GB。
-- 本次临时恢复克隆及分卷会在证据回读后清理；其他项目、共享文件及系统记录不在范围内。
+- 本次临时恢复克隆、上传分卷和云端回读文件均已删除并确认路径不存在；其他项目、共享文件及系统记录不在范围内。
 - 本次未重新部署公开 Pages；仅 GitHub 源码、文档与 Release 更新。
 - 依赖安全告警及真实设备验收边界见 HANDOFF.md，不以自动测试替代真机证明。
