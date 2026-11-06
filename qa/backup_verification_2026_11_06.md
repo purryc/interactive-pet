@@ -19,3 +19,17 @@
 - 本次产生的临时归档、恢复验证克隆与临时文件。
 
 不删除 AIGC 根目录、其他项目、共享作品集文档、全局依赖、Blender、Xcode、Apple 签名钥匙串、聊天及记忆记录。
+
+
+## 最终云端核验与原件清理
+
+- 主仓库运行代码提交：e256d0f66354ac0f0a27aa6b51e40244edb24236。
+- 重新克隆 GitHub，118 个追踪文件逐字节一致，npm ci、35/35 测试和 build 成功。
+- 私有归档已上传并下载回读：37 分卷、41 个资产；分卷与内部 4605 个文件全部 SHA-256 一致（4498518290 字节非缓存原件）。
+- 私有归档：https://github.com/purryc/interactive-pet-archive/releases/tag/handoff-2026-11-06 。
+- 可部署网页 ZIP：https://github.com/purryc/interactive-pet/releases/tag/handoff-2026-11-06 。
+- Notion 交接手册：https://app.notion.com/p/410194db24c381cab622d92ab5da91ec 。
+- 上述 7 个本机目录/文件已删除，共 13810 个文件（含缓存），逻辑大小约 4.97 GB。
+- 本次临时恢复克隆及分卷会在证据回读后清理；其他项目、共享文件及系统记录不在范围内。
+- 本次未重新部署公开 Pages；仅 GitHub 源码、文档与 Release 更新。
+- 依赖安全告警及真实设备验收边界见 HANDOFF.md，不以自动测试替代真机证明。

@@ -173,3 +173,8 @@ UIKit 把 x/y 归一化位置、altitude、azimuth、zOffset、timestamp、phase
 恢复全量：先获取私有仓库访问权，用 `gh release download handoff-2026-11-06 --repo purryc/interactive-pet-archive --dir archive`，在下载目录运行 `shasum -a 256 -c SHA256SUMS`。按文件名顺序拼接 `heihei_full_2026_11_06.tar.gz.part*` 后解压，内含 `files/` 与 `manifest.json`。`.git` 历史可从 bundle 恢复；日常开发直接克隆公开仓库更方便。
 
 删除门槛：远端 commit 对齐、恢复克隆所有追踪文件逐个 hash 一致、恢复克隆测试/构建通过、全量归档各分卷下载回读 hash 一致、Notion 手册及规格可读取。门槛未通过不能宣称已完全备份或删除。最终执行结果记录在 `qa/backup_verification_2026_11_06.md`。
+
+
+## 10. 交接完成记录
+
+[Notion 完整交接手册](https://app.notion.com/p/410194db24c381cab622d92ab5da91ec) 已保存且回读；两份完整交互规格是其同级子页。云端归档已下载并通过全部文件校验；原两个工程与 5 个独立资料副本均已删除。具体恢复、核验、边界见 [核验记录](qa/backup_verification_2026_11_06.md)。本机 localhost 服务不再作为交付入口，请克隆或使用 Release ZIP 恢复。
