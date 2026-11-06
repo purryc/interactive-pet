@@ -135,7 +135,7 @@ BLENDER_BIN=/Applications/Blender.app/Contents/MacOS/Blender .venv/bin/python sr
 
 ## 7. iPad、日志和已知未完成项
 
-原生工程 `ios/heihei_hover/HeiheiHover.xcodeproj`。使用自己的 Apple 开发者团队与唯一 bundle id 签名；不交接私钥、profile、账号密码。宿主目前加载公开 Pages URL，不嵌入模型；要测试新版本先在 `HeiheiHover.swift` 中检查/修改默认 URL 或界面地址，再安装。支持的 Pencil/iPad 硬件才能获得 hover；设备解锁、Developer Mode 与签名信任按 Xcode 要求完成。
+原生工程 `ios/heihei_hover/HeiheiHover.xcodeproj`。使用自己的 Apple 开发者团队与唯一 bundle id 签名；不交接私钥、profile、账号密码。宿主目前加载公开 Pages URL，不嵌入模型；要测试新版本先在 `HeiheiHover.swift` 中检查/修改 URL，再安装。支持的 Pencil/iPad 硬件才能获得 hover；设备解锁、Developer Mode 与签名信任按 Xcode 要求完成。
 
 UIKit 把 x/y 归一化位置、altitude、azimuth、zOffset、timestamp、phase、channel/contact 发给 `heihei-pencil`。网页根据窗口尺寸还原位置；原生通道拥有笔时忽略重复 Pointer Events，接触优先于迟到的 hover end。2026-09 历史对话中用户确认姿态有变化、笔尖已对齐和接触切换正常；这不代替当前双玩法版本的真机重新验收。
 
@@ -146,6 +146,8 @@ UIKit 把 x/y 归一化位置、altitude、azimuth、zOffset、timestamp、phase
 ## 8. 测试、恢复排障与接手顺序
 
 本次在删除前重新运行 `npm test --prefix web`：35/35 通过；`npm run build --prefix web` 成功。包括真实 GLB 骨骼/动作/权重、头颈与移动、投喂优先级、30/60/120Hz 进食、原生去重、异步切换竞态、12 节物理链、快扫碰撞、冷却与落地流程。构建仍有大 chunk 提示（Rapier 动态包约 2.88MB），属于已知性能优化项，不是构建失败。
+
+恢复克隆的 npm ci 另报告两个 high 依赖告警：Vite 与 source-map-js；本次备份保留原锁文件，没有自动升级。接手后应先审阅 `npm audit`，在独立分支升级并回归测试；不要把开发服务器暴露到不可信网络。该告警不等同于静态网站已经被入侵。
 
 恢复后先跑 npm ci/test/build，然后实际浏览器验证：默认冻干→上下移动袋子→快晃跑→点按一颗→移出场景吃→进食中重新 hover→切到 wand→球与猫/地面碰撞→左右爪→快速来回切换→打开设置不误触→刷新恢复默认。再测 iPad 原生与手机竖屏。节点自动测试不能证明真实设备性能或视觉碰撞合格。
 
